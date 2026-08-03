@@ -1,0 +1,64 @@
+sequenceDiagram
+    participant MiniProgram as 微信小程序
+    participant AuthController as 认证控制器
+    participant AuthService as 认证服务
+    participant CircleController as 圈子控制器
+    participant CircleService as 圈子服务
+    participant PlanController as 计划控制器
+    participant PlanService as 计划服务
+    participant CheckinController as 打卡控制器
+    participant CheckinService as 打卡服务
+    participant FileController as 文件控制器
+    participant FileService as 文件服务
+    participant DailyTask as 每日汇总任务
+    participant NotifyService as 通知服务
+    
+    Note over MiniProgram,NotifyService: 微信小程序登录流程
+    MiniProgram->>AuthController: POST /api/auth/login (code)
+    AuthController->>AuthService: login(code)
+    AuthService->>AuthService: 调用微信接口获取openid
+    AuthService->>AuthService: 生成JWT token
+    AuthService-->>AuthController: LoginResponse(token, user)
+    AuthController-->>MiniProgram: 返回token和用户信息
+    
+    Note over MiniProgram,NotifyService: 创建圈子流程
+    MiniProgram->>CircleController: POST /api/circles (token, data)
+    CircleController->>CircleService: createCircle(data)
+    CircleService->>CircleService: 创建圈子记录
+    CircleService->>CircleService: 创建圈子成员关系
+    CircleService-->>CircleController: Circle对象
+    CircleController-->>MiniProgram: 返回圈子信息
+    
+    Note over MiniProgram,NotifyService: 创建计划流程
+    MiniProgram->>PlanController: POST /api/plans (token, data)
+    PlanController->>PlanService: createPlan(data)
+    PlanService->>PlanService: 验证用户权限
+    PlanService->>PlanService: 创建计划记录
+    PlanService-->>PlanController: Plan对象
+    PlanController-->>MiniProgram: 返回计划信息
+    
+    Note over MiniProgram,NotifyService: 打卡流程
+    MiniProgram->>CheckinController: POST /api/checkins (token, data)
+    CheckinController->>CheckinService: checkin(data)
+    CheckinService->>CheckinService: 验证计划状态
+    CheckinService->>CheckinService: 验证打卡时长
+    CheckinService->>CheckinService: 创建打卡记录
+    CheckinService-->>CheckinController: CheckinRecord对象
+    CheckinController-->>MiniProgram: 返回打卡结果
+    
+    Note over MiniProgram,NotifyService: 文件上传流程
+    MiniProgram->>FileController: POST /api/files/upload (file)
+    FileController->>FileService: uploadFile(file)
+    FileService->>FileService: 保存文件到本地
+    FileService->>FileService: 生成访问URL
+    FileService-->>FileController: 文件URL
+    FileController-->>MiniProgram: 返回文件URL
+    
+    Note over MiniProgram,NotifyService: 每日汇总推送流程
+    DailyTask->>DailyTask: 执行定时任务
+    DailyTask->>PlanService: 获取所有进行中的计划
+    loop 每个计划
+        DailyTask->>CheckinService: 获取今日打卡记录
+        DailyTask->>NotifyService: 发送汇总通知
+        NotifyService->>NotifyService: 调用微信订阅消息接口
+    end

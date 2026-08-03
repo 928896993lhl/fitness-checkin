@@ -1,0 +1,126 @@
+.plan-progress-card {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  
+  .card-header {
+    margin-bottom: 24rpx;
+    
+    .plan-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12rpx;
+      
+      .plan-name {
+        font-size: 30rpx;
+        font-weight: bold;
+        color: #333;
+      }
+      
+      .plan-status {
+        padding: 8rpx 16rpx;
+        border-radius: 20rpx;
+        
+        .status-text {
+          font-size: 22rpx;
+          font-weight: 500;
+        }
+      }
+    }
+    
+    .plan-dates {
+      .date-text {
+        font-size: 24rpx;
+        color: #666;
+      }
+    }
+  }
+  
+  .card-body {
+    .progress-section {
+      margin-bottom: 24rpx;
+      
+      .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12rpx;
+        
+        .progress-label {
+          font-size: 26rpx;
+          color: #666;
+        }
+        
+        .progress-value {
+          font-size: 28rpx;
+          font-weight: bold;
+        }
+      }
+      
+      .progress-bar {
+        width: 100%;
+        height: 16rpx;
+        background-color: #e5e7eb;
+        border-radius: 8rpx;
+        overflow: hidden;
+        
+        .progress-fill {
+          height: 100%;
+          border-radius: 8rpx;
+          transition: width 0.3s ease;
+        }
+      }
+    }
+    
+    .details-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16rpx;
+      padding: 20rpx;
+      background-color: #f9fafb;
+      border-radius: 12rpx;
+      
+      .detail-item {
+        text-align: center;
+        
+        .detail-label {
+          font-size: 22rpx;
+          color: #666;
+          display: block;
+          margin-bottom: 8rpx;
+        }
+        
+        .detail-value {
+          font-size: 28rpx;
+          font-weight: bold;
+          color: #333;
+        }
+      }
+    }
+  }
+  
+  .card-footer {
+    margin-top: 24rpx;
+    padding-top: 20rpx;
+    border-top: 1rpx solid #f3f4f6;
+    display: flex;
+    gap: 30rpx;
+    
+    .goal-item {
+      display: flex;
+      align-items: center;
+      
+      .goal-icon {
+        font-size: 24rpx;
+        margin-right: 8rpx;
+      }
+      
+      .goal-text {
+        font-size: 24rpx;
+        color: #666;
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/fitness_checkin?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 10000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+# 开发环境日志级别
+logging:
+  level:
+    com.fitness.checkin: DEBUG
+    org.springframework.security: DEBUG
+  file:
+    name: logs/fitness-checkin-dev.log
+
+# 微信小程序配置（开发环境使用环境变量，有默认测试值）
+wechat:
+  appid: ${WECHAT_APPID:wx_dev_test_appid}
+  secret: ${WECHAT_SECRET:wx_dev_test_secret}
+
+# 文件上传路径（开发环境）
+fitness:
+  upload:
+    path: ./uploads/
+    url-prefix: /files/

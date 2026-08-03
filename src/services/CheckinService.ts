@@ -1,0 +1,70 @@
+import { request, uploadFile } from '../utils/request'
+import {
+  CheckinRecord,
+  UserExerciseStats,
+  CreateCheckinRequest,
+  GetCheckinRecordsRequest,
+  APIResponse,
+  PaginatedResult
+} from '../types'
+
+/**
+ * 打卡服务类
+ * 处理打卡相关的API调用
+ */
+export class CheckinService {
+  /**
+   * 创建打卡记录
+   */
+  static async createCheckin(checkinData: CreateCheckinRequest): Promise<APIResponse<CheckinRecord>> {
+    return request('/checkin', 'POST', checkinData)
+  }
+
+  /**
+   * 获取我的打卡记录
+   */
+  static async getMyCheckins(params: GetCheckinRecordsRequest = {}): Promise<APIResponse<PaginatedResult<CheckinRecord>>> {
+    return request('/checkin/records/0')
+  }
+
+  /**
+   * 获取计划的打卡记录
+   */
+  static async getCheckinsByPlan(planId: string, params: GetCheckinRecordsRequest = {}): Promise<APIResponse<PaginatedResult<CheckinRecord>>> {
+    return request(`/checkin/records/${planId}`)
+  }
+
+  /**
+   * 获取用户打卡记录
+   */
+  static async getCheckinsByUser(userId: string, params: GetCheckinRecordsRequest = {}): Promise<APIResponse<PaginatedResult<CheckinRecord>>> {
+    return request('/checkin/records/0')
+  }
+
+  /**
+   * 获取今日打卡记录
+   */
+  static async getTodayCheckins(planId?: string): Promise<APIResponse<{
+    records: CheckinRecord[]
+    total_duration: number
+  }>> {
+    const url = planId ? `/checkin/check-today/${planId}` : '/checkin/check-today/0'
+    return request(url)
+  }
+
+  /**
+   * 获取用户运动统计
+   */
+  static async getUserStats(): Promise<APIResponse<UserExerciseStats>> {
+    return request('/checkin/stats/0')
+  }
+
+  /**
+   * 上传照片
+   */
+  static async uploadPhoto(filePath: string): Promise<APIResponse<{
+    url: string
+  }>> {
+    return uploadFile(filePath, 'photo')
+  }
+}

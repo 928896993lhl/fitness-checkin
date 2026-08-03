@@ -1,0 +1,213 @@
+import { useState, useEffect } from 'react'
+import Taro, { useRouter } from '@tarojs/taro'
+import { View, Text, ScrollView } from '@tarojs/components'
+import { useUserState } from '../../../context/UserContext'
+import { CheckinService } from '../../../services/CheckinService'
+import { PlanService } from '../../../services/PlanService'
+import { CheckinRecord, Plan } from '../../../types'
+import CheckinCard from '../../../components/checkin/CheckinCard'
+import EmptyState from '../../../components/common/EmptyState'
+import LoadingSpinner from '../../../components/common/LoadingSpinner'
+import './history.scss'
+
+/**
+ * 运动历史页面
+ */
+const History = () => {
+  const router = useRouter()
+  const { user } = useUserState()
+  const circleId = router.params.circleId || ''
+
+  const [records, setRecords] = useState<CheckinRecord[]>([])
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [selectedPlan, setSelectedPlan] = useState<string>('all')
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [page, setPage] = useState<number>(1)
+  const [hasMore, setHasMore] = useState<boolean>(true)
+
+  /**
+   * 加载历史记录
+   */
+  const loadRecords = async (reset = false) => {
+    if (!user) return
+
+    try {
+      setIsLoading(true)
+
+      const currentPage = reset ? 1 : page
+      const params: any = {
+        page: currentPage,
+        page_size: 20
+      }
+
+      if (selectedPlan !== 'all') {
+        params.plan_id = selectedPlan
+      }
+
+      const result = await CheckinService.getMyCheckins(params)
+
+      if (result.code === 0) {
+        const newRecords = result.data.list
+        if (reset) {
+          setRecords(newRecords)
+        } else {
+          setRecords([...records, ...newRecords])
+        }
+        setHasMore(newRecords.length === 20)
+        setPage(currentPage + 1)
+      }
+    } catch (error) {
+      console.error('加载历史记录失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  /**
+   * 加载计划列表
+   */
+  const loadPlans = async () => {
+    if (!circleId) return
+
+    try {
+      const result = await PlanService.getPlansByCircle(circleId)
+      if (result.code === 0) {
+        setPlans(result.data.list)
+      }
+    } catch (error) {
+      console.error('加载计划列表失败:', error)
+    }
+  }
+
+  useEffect(() => {
+    loadPlans()
+  }, [circleId])
+
+  useEffect(() => {
+    loadRecords(true)
+  }, [selectedPlan])
+
+  /**
+   * 加载更多
+   */
+  const loadMore = () => {
+    if (!hasMore || isLoading) return
+    loadRecords()
+  }
+
+  /**
+   * 切换计划筛选
+   */
+  const handlePlanChange = (planId: string) => {
+    setSelectedPlan(planId)
+    setPage(1)
+  }
+
+  /**
+   * 格式化时长
+   */
+  const formatDuration = (minutes: number): string => {
+    if (minutes < 60) return `${minutes}分钟`
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`
+  }
+
+  /**
+   * 计算总运动时长
+   */
+  const totalDuration = records.reduce((sum, record) => sum + record.duration, 0)
+
+  return (
+    <View className='history-page'>
+      {/* 筛选栏 */}
+      <View className='filter-section'>
+        <ScrollView
+          className='filter-scroll'
+          scrollX
+          enhanced
+          showScrollbar={false}
+        >
+          <View className='filter-list'>
+            <View
+              className={`filter-item ${selectedPlan === 'all' ? 'active' : ''}`}
+              onClick={() => handlePlanChange('all')}
+            >
+              <Text className='filter-text'>全部</Text>
+            </View>
+            {plans.map(plan => (
+              <View
+                key={plan._id}
+                className={`filter-item ${selectedPlan === plan._id ? 'active' : ''}`}
+                onClick={() => handlePlanChange(plan._id)}
+              >
+                <Text className='filter-text'>{plan.name}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* 统计信息 */}
+      <View className='stats-bar'>
+        <View className='stat-item'>
+          <Text className='stat-value'>{records.length}</Text>
+          <Text className='stat-label'>打卡次数</Text>
+        </View>
+        <View className='stat-item'>
+          <Text className='stat-value'>{formatDuration(totalDuration)}</Text>
+          <Text className='stat-label'>总运动时长</Text>
+        </View>
+        <View className='stat-item'>
+          <Text className='stat-value'>
+            {records.length > 0 ? Math.round(totalDuration / records.length) : 0}
+          </Text>
+          <Text className='stat-label'>平均时长(分钟)</Text>
+        </View>
+      </View>
+
+      {/* 记录列表 */}
+      <ScrollView
+        className='records-scroll'
+        scrollY
+        enhanced
+        showScrollbar={false}
+        onScrollToLower={loadMore}
+      >
+        {records.length === 0 && !isLoading ? (
+          <EmptyState
+            icon='📋'
+            title='暂无运动记录'
+            description='开始运动并打卡吧'
+          />
+        ) : (
+          <View className='records-list'>
+            {records.map(record => (
+              <CheckinCard
+                key={record._id}
+                record={record}
+                showDate
+              />
+            ))}
+            
+            {hasMore && (
+              <View className='load-more'>
+                <Text className='load-more-text'>
+                  {isLoading ? '加载中...' : '加载更多'}
+                </Text>
+              </View>
+            )}
+            
+            {!hasMore && records.length > 0 && (
+              <View className='no-more'>
+                <Text className='no-more-text'>没有更多记录了</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  )
+}
+
+export default History

@@ -1,0 +1,137 @@
+.checkin-card {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  margin-bottom: 16rpx;
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20rpx;
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      
+      .user-avatar {
+        width: 60rpx;
+        height: 60rpx;
+        border-radius: 30rpx;
+        overflow: hidden;
+        margin-right: 16rpx;
+        
+        .avatar-image {
+          width: 100%;
+          height: 100%;
+        }
+        
+        .avatar-placeholder {
+          width: 100%;
+          height: 100%;
+          background-color: #e5e7eb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          
+          .avatar-text {
+            font-size: 24rpx;
+            color: #6b7280;
+            font-weight: bold;
+          }
+        }
+      }
+      
+      .user-name {
+        font-size: 28rpx;
+        font-weight: 500;
+        color: #333;
+      }
+    }
+    
+    .time-info {
+      text-align: right;
+      
+      .date-text {
+        font-size: 22rpx;
+        color: #666;
+        display: block;
+        margin-bottom: 4rpx;
+      }
+      
+      .time-text {
+        font-size: 24rpx;
+        color: #333;
+      }
+    }
+  }
+  
+  .card-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    
+    .exercise-info {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      
+      .exercise-icon {
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 16rpx;
+        background-color: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 20rpx;
+        
+        .icon-text {
+          font-size: 36rpx;
+        }
+      }
+      
+      .exercise-details {
+        .exercise-type {
+          font-size: 28rpx;
+          font-weight: 500;
+          color: #333;
+          display: block;
+          margin-bottom: 8rpx;
+        }
+        
+        .exercise-duration {
+          font-size: 32rpx;
+          font-weight: bold;
+          color: #3b82f6;
+        }
+      }
+    }
+    
+    .photo-preview {
+      width: 160rpx;
+      height: 120rpx;
+      border-radius: 12rpx;
+      overflow: hidden;
+      margin-left: 20rpx;
+      
+      .photo-image {
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
+  
+  .card-footer {
+    margin-top: 20rpx;
+    padding-top: 20rpx;
+    border-top: 1rpx solid #f3f4f6;
+    
+    .note-text {
+      font-size: 26rpx;
+      color: #666;
+      line-height: 1.5;
+    }
+  }
+}

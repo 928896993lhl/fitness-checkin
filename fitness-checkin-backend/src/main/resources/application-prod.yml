@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/fitness_checkin?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:fitness_user}
+    password: ${DB_PASSWORD:your_password}
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 10000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+# 生产环境日志级别
+logging:
+  level:
+    com.fitness.checkin: INFO
+    org.springframework.security: WARN
+  file:
+    name: /var/log/fitness-checkin/fitness-checkin-prod.log
+
+# 微信小程序配置（生产环境从环境变量读取）
+wechat:
+  appid: ${WECHAT_APPID:your-production-appid}
+  secret: ${WECHAT_SECRET:your-production-secret}
+
+# 文件上传路径（生产环境）
+fitness:
+  upload:
+    path: /data/fitness-checkin/uploads/
+    url-prefix: /files/
+
+# 生产环境关闭SQL日志
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl

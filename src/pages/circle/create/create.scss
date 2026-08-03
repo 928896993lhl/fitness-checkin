@@ -1,0 +1,140 @@
+.create-circle-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 200rpx;
+}
+
+.form-section {
+  background-color: #fff;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  
+  .form-item {
+    margin-bottom: 40rpx;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    .form-label {
+      font-size: 28rpx;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 16rpx;
+      display: block;
+    }
+    
+    .form-input {
+      width: 100%;
+      height: 88rpx;
+      background-color: #f9fafb;
+      border: 2rpx solid #e5e7eb;
+      border-radius: 12rpx;
+      padding: 0 24rpx;
+      font-size: 28rpx;
+      color: #333;
+      
+      &.textarea {
+        height: 160rpx;
+        padding: 24rpx;
+      }
+      
+      &:focus {
+        border-color: #3b82f6;
+        background-color: #fff;
+      }
+    }
+    
+    .picker-input {
+      width: 100%;
+      height: 88rpx;
+      background-color: #f9fafb;
+      border: 2rpx solid #e5e7eb;
+      border-radius: 12rpx;
+      padding: 0 24rpx;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      
+      .picker-text {
+        font-size: 28rpx;
+        color: #333;
+      }
+      
+      .picker-arrow {
+        font-size: 36rpx;
+        color: #999;
+      }
+    }
+    
+    .form-hint {
+      font-size: 24rpx;
+      color: #666;
+      margin-top: 12rpx;
+      display: block;
+    }
+  }
+}
+
+.tips-section {
+  background-color: #fff;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  
+  .tips-title {
+    font-size: 28rpx;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 20rpx;
+    display: block;
+  }
+  
+  .tips-list {
+    .tips-item {
+      font-size: 26rpx;
+      color: #666;
+      line-height: 1.8;
+      display: block;
+    }
+  }
+}
+
+.submit-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 30rpx;
+  background-color: #fff;
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.05);
+  
+  .submit-btn {
+    width: 100%;
+    height: 96rpx;
+    border-radius: 48rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &.active {
+      background-color: #3b82f6;
+      
+      .submit-btn-text {
+        color: #fff;
+      }
+    }
+    
+    &.disabled {
+      background-color: #e5e7eb;
+      
+      .submit-btn-text {
+        color: #9ca3af;
+      }
+    }
+    
+    .submit-btn-text {
+      font-size: 32rpx;
+      font-weight: 500;
+    }
+  }
+}

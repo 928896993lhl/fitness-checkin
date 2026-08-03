@@ -1,0 +1,33 @@
+[Unit]
+Description=Fitness Checkin Backend Service
+After=syslog.target network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/fitness-checkin
+ExecStart=/usr/bin/java -jar fitness-checkin-backend.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+# 环境变量配置（部署时需替换为实际值）
+Environment="SPRING_PROFILES_ACTIVE=prod"
+Environment="JWT_SECRET=replace-with-256bit-secret-key"
+Environment="DB_USERNAME=fitness_user"
+Environment="DB_PASSWORD=replace-with-db-password"
+Environment="REDIS_HOST=localhost"
+Environment="REDIS_PORT=6379"
+Environment="WECHAT_APPID=replace-with-wechat-appid"
+Environment="WECHAT_SECRET=replace-with-wechat-secret"
+
+# JVM参数
+Environment="JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError"
+
+# 日志配置
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=fitness-checkin
+
+[Install]
+WantedBy=multi-user.target

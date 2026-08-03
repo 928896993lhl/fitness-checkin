@@ -1,0 +1,261 @@
+.index-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 120rpx;
+}
+
+.login-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 200rpx 40rpx;
+  
+  .login-icon {
+    font-size: 120rpx;
+    margin-bottom: 40rpx;
+  }
+  
+  .login-title {
+    font-size: 36rpx;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 16rpx;
+  }
+  
+  .login-desc {
+    font-size: 28rpx;
+    color: #666;
+    margin-bottom: 60rpx;
+    text-align: center;
+  }
+  
+  .login-btn {
+    width: 80%;
+    height: 88rpx;
+    background-color: #3b82f6;
+    border-radius: 44rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .login-btn-text {
+      color: #fff;
+      font-size: 32rpx;
+      font-weight: 500;
+    }
+  }
+}
+
+.welcome-section {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  padding: 40rpx 30rpx;
+  padding-top: 20rpx;
+  
+  .welcome-header {
+    display: flex;
+    align-items: center;
+  }
+  
+  .avatar-wrapper {
+    width: 100rpx;
+    height: 100rpx;
+    border-radius: 50rpx;
+    overflow: hidden;
+    margin-right: 24rpx;
+    border: 4rpx solid rgba(255, 255, 255, 0.3);
+    
+    .avatar-image {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .avatar-placeholder {
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      .avatar-text {
+        font-size: 40rpx;
+        color: #fff;
+        font-weight: bold;
+      }
+    }
+  }
+  
+  .welcome-info {
+    flex: 1;
+    
+    .welcome-greeting {
+      font-size: 34rpx;
+      font-weight: bold;
+      color: #fff;
+      display: block;
+      margin-bottom: 8rpx;
+    }
+    
+    .welcome-date {
+      font-size: 24rpx;
+      color: rgba(255, 255, 255, 0.8);
+    }
+  }
+}
+
+.checkin-status-card {
+  background-color: #fff;
+  margin: 24rpx;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  
+  .status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30rpx;
+    
+    .status-title {
+      font-size: 32rpx;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .status-plan {
+      font-size: 24rpx;
+      color: #3b82f6;
+      background-color: #eff6ff;
+      padding: 8rpx 16rpx;
+      border-radius: 20rpx;
+    }
+  }
+  
+  .status-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    .duration-display {
+      display: flex;
+      align-items: baseline;
+      
+      .duration-number {
+        font-size: 72rpx;
+        font-weight: bold;
+        color: #3b82f6;
+        line-height: 1;
+      }
+      
+      .duration-unit {
+        font-size: 28rpx;
+        color: #666;
+        margin-left: 8rpx;
+      }
+    }
+  }
+  
+  .goal-hint {
+    margin-top: 20rpx;
+    padding: 16rpx;
+    background-color: #fef3c7;
+    border-radius: 12rpx;
+    
+    .goal-hint-text {
+      font-size: 24rpx;
+      color: #92400e;
+    }
+  }
+}
+
+.stats-section {
+  padding: 0 24rpx;
+  margin-bottom: 30rpx;
+  
+  .section-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20rpx;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16rpx;
+  }
+}
+
+.circles-section {
+  padding: 0 24rpx;
+  margin-bottom: 30rpx;
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20rpx;
+    
+    .section-title {
+      font-size: 32rpx;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .section-more {
+      font-size: 26rpx;
+      color: #3b82f6;
+    }
+  }
+  
+  .circles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16rpx;
+  }
+}
+
+.quick-actions {
+  display: flex;
+  justify-content: space-around;
+  padding: 40rpx 24rpx;
+  background-color: #fff;
+  margin: 0 24rpx;
+  border-radius: 20rpx;
+  margin-bottom: 40rpx;
+  
+  .action-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    .action-icon {
+      width: 100rpx;
+      height: 100rpx;
+      border-radius: 50rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40rpx;
+      margin-bottom: 16rpx;
+      
+      &.create-icon {
+        background-color: #dbeafe;
+      }
+      
+      &.join-icon {
+        background-color: #d1fae5;
+      }
+      
+      &.profile-icon {
+        background-color: #fef3c7;
+      }
+    }
+    
+    .action-text {
+      font-size: 24rpx;
+      color: #666;
+    }
+  }
+}

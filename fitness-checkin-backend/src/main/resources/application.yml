@@ -1,0 +1,56 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+# MyBatis-Plus配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 文件上传路径
+fitness:
+  upload:
+    path: /data/fitness-checkin/uploads/
+    url-prefix: /files/
+
+# JWT配置
+jwt:
+  secret: ${JWT_SECRET:fitness-checkin-dev-secret-key-placeholder}
+  expiration: 86400000 # 24小时
+  header: Authorization
+  prefix: "Bearer "
+
+# 微信小程序配置（通过环境变量注入，开发环境使用默认测试值）
+wechat:
+  appid: ${WECHAT_APPID:wx_dev_appid}
+  secret: ${WECHAT_SECRET:wx_dev_secret}
+  api-url: https://api.weixin.qq.com/sns/jscode2session
+
+# 日志配置
+logging:
+  level:
+    com.fitness.checkin: DEBUG
+    org.springframework.security: INFO
+  pattern:
+    dateformat: yyyy-MM-dd HH:mm:ss.SSS
