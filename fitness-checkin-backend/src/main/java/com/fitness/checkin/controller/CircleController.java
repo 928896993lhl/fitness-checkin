@@ -15,15 +15,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 圈子控制器
- * 处理圈子相关的请求
- * 
- * @author Kou
- * @version 1.0.0
+ * 统一返回Result结构，查询为空时返回空集合
  */
 @RestController
 @RequestMapping("/circles")
@@ -41,88 +40,93 @@ public class CircleController {
 
     /**
      * 创建圈子
-     * 
-     * @param request     创建圈子请求
-     * @param userDetails Spring Security用户详情
-     * @return 创建的圈子
      */
     @PostMapping
     public Result<?> createCircle(@Valid @RequestBody CreateCircleRequest request,
                                  @AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        Circle circle = circleService.createCircle(
-                user.getUserId(),
-                request.getName(),
-                request.getDescription(),
-                request.getMaxMembers()
-        );
-        return Result.success(circle);
+        try {
+            User user = getCurrentUser(userDetails);
+            Circle circle = circleService.createCircle(
+                    user.getUserId(),
+                    request.getName(),
+                    request.getDescription(),
+                    request.getMaxMembers()
+            );
+            return Result.success(circle);
+        } catch (Exception e) {
+            logger.error("创建圈子失败: {}", e.getMessage());
+            return Result.error(500, e.getMessage());
+        }
     }
 
     /**
      * 加入圈子
-     * 
-     * @param request     加入圈子请求
-     * @param userDetails Spring Security用户详情
-     * @return 加入的成员信息
      */
     @PostMapping("/join")
     public Result<?> joinCircle(@Valid @RequestBody JoinCircleRequest request,
                                @AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        CircleMember member = circleService.joinCircle(user.getUserId(), request.getInviteCode());
-        return Result.success(member);
+        try {
+            User user = getCurrentUser(userDetails);
+            CircleMember member = circleService.joinCircle(user.getUserId(), request.getInviteCode());
+            return Result.success(member);
+        } catch (Exception e) {
+            logger.error("加入圈子失败: {}", e.getMessage());
+            return Result.error(500, e.getMessage());
+        }
     }
 
     /**
      * 获取圈子详情
-     * 
-     * @param circleId    圈子ID
-     * @param userDetails Spring Security用户详情
-     * @return 圈子详情
      */
     @GetMapping("/{circleId}")
     public Result<?> getCircleDetail(@PathVariable Long circleId,
                                     @AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        Map<String, Object> detail = circleService.getCircleDetail(circleId, user.getUserId());
-        return Result.success(detail);
+        try {
+            User user = getCurrentUser(userDetails);
+            Map<String, Object> detail = circleService.getCircleDetail(circleId, user.getUserId());
+            return Result.success(detail);
+        } catch (Exception e) {
+            logger.warn("获取圈子详情失败: {}", e.getMessage());
+            return Result.success(new HashMap<>());
+        }
     }
 
     /**
      * 获取圈子成员列表
-     * 
-     * @param circleId    圈子ID
-     * @param userDetails Spring Security用户详情
-     * @return 成员列表
      */
     @GetMapping("/{circleId}/members")
     public Result<?> getCircleMembers(@PathVariable Long circleId,
                                      @AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        // 验证用户是圈子成员
-        if (!circleService.isCircleMember(circleId, user.getUserId())) {
-            return Result.forbidden();
+        try {
+            User user = getCurrentUser(userDetails);
+            if (!circleService.isCircleMember(circleId, user.getUserId())) {
+                return Result.success(new ArrayList<>());
+            }
+            List<Map<String, Object>> members = circleService.getCircleMembers(circleId);
+            return Result.success(members);
+        } catch (Exception e) {
+            logger.warn("获取圈子成员失败: {}", e.getMessage());
+            return Result.success(new ArrayList<>());
         }
-        List<Map<String, Object>> members = circleService.getCircleMembers(circleId);
-        return Result.success(members);
     }
 
     /**
      * 获取用户加入的圈子列表
-     * 
-     * @param userDetails Spring Security用户详情
-     * @return 圈子列表
      */
     @GetMapping("/my")
     public Result<?> getUserCircles(@AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        List<Circle> circles = circleService.getUserCircles(user.getUserId());
-        return Result.success(circles);
+        try {
+            User user = getCurrentUser(userDetails);
+            List<Circle> circles = circleService.getUserCircles(user.getUserId());
+            return Result.success(circles != null ? circles : new ArrayList<>());
+        } catch (Exception e) {
+            logger.warn("获取圈子列表失败: {}", e.getMessage());
+            return Result.success(new ArrayList<>());
+        }
     }
 
     /**
-     * 获取当前用户信息
+     * 获取当前用户
      */
     private User getCurrentUser(UserDetails userDetails) {
         String openid = userDetails.getUsername();

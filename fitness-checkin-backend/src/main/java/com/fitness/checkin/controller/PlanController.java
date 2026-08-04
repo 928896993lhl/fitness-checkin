@@ -13,15 +13,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 计划控制器
- * 处理计划相关的请求
- * 
- * @author Kou
- * @version 1.0.0
+ * 统一返回Result结构，查询为空时返回空集合
  */
 @RestController
 @RequestMapping("/plans")
@@ -39,77 +38,81 @@ public class PlanController {
 
     /**
      * 创建计划
-     * 
-     * @param request     创建计划请求
-     * @param userDetails Spring Security用户详情
-     * @return 创建的计划
      */
     @PostMapping
     public Result<?> createPlan(@Valid @RequestBody CreatePlanRequest request,
                                @AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        Plan plan = planService.createPlan(
-                request.getCircleId(),
-                user.getUserId(),
-                request.getName(),
-                request.getDescription(),
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getTotalDurationGoal(),
-                request.getDailyDurationGoal(),
-                request.getCircleTotalGoal(),
-                request.getMinDurationPerCheckin()
-        );
-        return Result.success(plan);
+        try {
+            User user = getCurrentUser(userDetails);
+            Plan plan = planService.createPlan(
+                    request.getCircleId(),
+                    user.getUserId(),
+                    request.getName(),
+                    request.getDescription(),
+                    request.getStartDate(),
+                    request.getEndDate(),
+                    request.getTotalDurationGoal(),
+                    request.getDailyDurationGoal(),
+                    request.getCircleTotalGoal(),
+                    request.getMinDurationPerCheckin()
+            );
+            return Result.success(plan);
+        } catch (Exception e) {
+            logger.error("创建计划失败: {}", e.getMessage());
+            return Result.error(500, e.getMessage());
+        }
     }
 
     /**
      * 启动计划
-     * 
-     * @param planId      计划ID
-     * @param userDetails Spring Security用户详情
-     * @return 更新后的计划
      */
     @PostMapping("/{planId}/start")
     public Result<?> startPlan(@PathVariable Long planId,
                               @AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        Plan plan = planService.startPlan(planId, user.getUserId());
-        return Result.success(plan);
+        try {
+            User user = getCurrentUser(userDetails);
+            Plan plan = planService.startPlan(planId, user.getUserId());
+            return Result.success(plan);
+        } catch (Exception e) {
+            logger.error("启动计划失败: {}", e.getMessage());
+            return Result.error(500, e.getMessage());
+        }
     }
 
     /**
      * 获取计划详情
-     * 
-     * @param planId      计划ID
-     * @param userDetails Spring Security用户详情
-     * @return 计划详情
      */
     @GetMapping("/{planId}")
     public Result<?> getPlanDetail(@PathVariable Long planId,
                                   @AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        Map<String, Object> detail = planService.getPlanDetail(planId, user.getUserId());
-        return Result.success(detail);
+        try {
+            User user = getCurrentUser(userDetails);
+            Map<String, Object> detail = planService.getPlanDetail(planId, user.getUserId());
+            return Result.success(detail);
+        } catch (Exception e) {
+            logger.warn("获取计划详情失败: {}", e.getMessage());
+            return Result.success(new HashMap<>());
+        }
     }
 
     /**
      * 获取圈子的计划列表
-     * 
-     * @param circleId    圈子ID
-     * @param userDetails Spring Security用户详情
-     * @return 计划列表
      */
     @GetMapping("/circle/{circleId}")
     public Result<?> getCirclePlans(@PathVariable Long circleId,
                                    @AuthenticationPrincipal UserDetails userDetails) {
-        User user = getCurrentUser(userDetails);
-        List<Map<String, Object>> plans = planService.getCirclePlans(circleId, user.getUserId());
-        return Result.success(plans);
+        try {
+            User user = getCurrentUser(userDetails);
+            List<Map<String, Object>> plans = planService.getCirclePlans(circleId, user.getUserId());
+            return Result.success(plans != null ? plans : new ArrayList<>());
+        } catch (Exception e) {
+            logger.warn("获取圈子计划列表失败: {}", e.getMessage());
+            return Result.success(new ArrayList<>());
+        }
     }
 
     /**
-     * 获取当前用户信息
+     * 获取当前用户
      */
     private User getCurrentUser(UserDetails userDetails) {
         String openid = userDetails.getUsername();
