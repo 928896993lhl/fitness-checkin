@@ -43,7 +43,7 @@ export const CHECKIN_RULES = {
 export const CIRCLE_RULES = {
   MIN_MEMBERS: 2,
   MAX_MEMBERS: 8,
-  INVITE_CODE_LENGTH: 6 // 邀请码长度
+  INVITE_CODE_LENGTH: 8 // 邀请码长度
 } as const
 
 /** 计划规则 */
@@ -150,7 +150,7 @@ export const PAGE_PATHS = {
 
 /** 正则表达式 */
 export const REGEX_PATTERNS = {
-  INVITE_CODE: /^[A-Za-z0-9]{6}$/, // 6位字母数字邀请码
+  INVITE_CODE: /^[A-Za-z0-9]{8}$/, // 8位字母数字邀请码
   PHONE: /^1[3-9]\d{9}$/, // 手机号
   NICKNAME: /^[\u4e00-\u9fa5a-zA-Z0-9_]{2,20}$/ // 2-20位中英文数字下划线昵称
 } as const

@@ -52,7 +52,7 @@ const JoinCircle = () => {
         invite_code: inviteCode.trim()
       })
 
-      if (result.code === 0) {
+      if (result.code === 200) {
         Taro.showToast({
           title: SUCCESS_MESSAGES.CIRCLE_JOINED,
           icon: 'success'
@@ -132,7 +132,7 @@ const JoinCircle = () => {
       {/* 加入按钮 */}
       <View className='action-section'>
         <View
-          className={`join-btn ${inviteCode.trim().length === 6 ? 'active' : 'disabled'}`}
+          className={`join-btn ${inviteCode.trim().length === 8 ? 'active' : 'disabled'}`}
           onClick={handleJoin}
         >
           <Text className='join-btn-text'>加入圈子</Text>

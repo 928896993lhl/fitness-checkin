@@ -253,26 +253,26 @@ const Index = () => {
           <Text className='section-title'>运动统计</Text>
           <View className='stats-grid'>
             <StatsCard
-              title='本周运动'
-              value={formatDuration(stats.this_week_duration)}
+              title='总运动时长'
+              value={formatDuration(stats.totalDuration || 0)}
               icon='📊'
               color='#3b82f6'
             />
             <StatsCard
-              title='本月运动'
-              value={formatDuration(stats.this_month_duration)}
+              title='打卡天数'
+              value={`${stats.checkinDays || 0}天`}
               icon='📅'
               color='#10b981'
             />
             <StatsCard
-              title='连续打卡'
-              value={`${stats.current_streak}天`}
+              title='已进行'
+              value={`${stats.passedDays || 0}天`}
               icon='🔥'
               color='#f59e0b'
             />
             <StatsCard
-              title='累计运动'
-              value={formatDuration(stats.total_duration)}
+              title='完成率'
+              value={`${Math.round(stats.completionRate || 0)}%`}
               icon='🏆'
               color='#8b5cf6'
             />

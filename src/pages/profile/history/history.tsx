@@ -46,8 +46,9 @@ const History = () => {
 
       const result = await CheckinService.getMyCheckins(params)
 
-      if (result.code === 0) {
-        const newRecords = result.data.list
+      if (result.code === 200) {
+        const rawData = result.data || []
+        const newRecords = Array.isArray(rawData) ? rawData : (rawData.records || [])
         if (reset) {
           setRecords(newRecords)
         } else {
@@ -71,8 +72,8 @@ const History = () => {
 
     try {
       const result = await PlanService.getPlansByCircle(circleId)
-      if (result.code === 0) {
-        setPlans(result.data.list)
+      if (result.code === 200) {
+        setPlans((result.data || result.data?.records || []))
       }
     } catch (error) {
       console.error('加载计划列表失败:', error)

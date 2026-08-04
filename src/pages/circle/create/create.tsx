@@ -74,17 +74,22 @@ const CreateCircle = () => {
         max_members: maxMembers
       })
 
-      if (result.code === 0) {
+      if (result.code === 200) {
         Taro.showToast({
           title: SUCCESS_MESSAGES.CIRCLE_CREATED,
           icon: 'success'
         })
 
         // 跳转到圈子详情页
+        const circleId = result.data?.circle_id || result.data?._id
         setTimeout(() => {
-          Taro.redirectTo({
-            url: `/pages/circle/circle?id=${result.data._id}`
-          })
+          if (circleId) {
+            Taro.redirectTo({
+              url: `/pages/circle/detail/detail?circleId=${circleId}`
+            })
+          } else {
+            Taro.switchTab({ url: '/pages/circle/circle' })
+          }
         }, 1500)
       } else {
         throw new Error(result.message)

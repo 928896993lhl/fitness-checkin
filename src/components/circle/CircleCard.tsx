@@ -30,7 +30,11 @@ const CircleCard: React.FC<CircleCardProps> = ({
    * 格式化创建时间
    */
   const formatCreatedTime = (date: string): string => {
-    const d = new Date(date)
+    if (!date) return '未知时间'
+    // 兼容 "2026-08-04 00:30:39" 和 ISO 格式
+    const normalized = date.includes('T') ? date : date.replace(' ', 'T')
+    const d = new Date(normalized)
+    if (isNaN(d.getTime())) return '未知时间'
     const now = new Date()
     const diff = now.getTime() - d.getTime()
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -74,9 +78,9 @@ const CircleCard: React.FC<CircleCardProps> = ({
             <Text className='code-label'>邀请码:</Text>
             <Text className='code-value'>{circle.invite_code}</Text>
           </View>
-          <View className={`status-tag ${circle.status}`}>
+          <View className={`status-tag ${Number(circle.status) === 1 ? 'active' : 'archived'}`}>
             <Text className='status-text'>
-              {circle.status === 'active' ? '活跃' : '已归档'}
+              {Number(circle.status) === 1 ? '活跃' : '已归档'}
             </Text>
           </View>
         </View>

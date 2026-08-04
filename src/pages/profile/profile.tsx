@@ -38,11 +38,12 @@ const Profile = () => {
         CheckinService.getUserStats()
       ])
 
-      if (circlesRes.status === 'fulfilled' && circlesRes.value.code === 0) {
-        setCircles(circlesRes.value.data.list)
+      if (circlesRes.status === 'fulfilled' && circlesRes.value.code === 200) {
+        const rawData = circlesRes.value.data || []
+        setCircles(Array.isArray(rawData) ? rawData : (rawData.records || []))
       }
 
-      if (statsRes.status === 'fulfilled' && statsRes.value.code === 0) {
+      if (statsRes.status === 'fulfilled' && statsRes.value.code === 200) {
         setStats(statsRes.value.data)
       }
     } catch (error) {
@@ -73,7 +74,7 @@ const Profile = () => {
    */
   const navigateToCircle = (circle: Circle) => {
     Taro.navigateTo({
-      url: `/pages/circle/circle?id=${circle._id}`
+      url: `/pages/circle/detail/detail?circleId=${circle.circle_id || circle._id}`
     })
   }
 

@@ -3,6 +3,7 @@ export default defineAppConfig({
     'pages/index/index',
     'pages/login/login',
     'pages/circle/circle',
+    'pages/circle/detail/detail',
     'pages/circle/create/create',
     'pages/circle/join/join',
     'pages/plan/create/create',
