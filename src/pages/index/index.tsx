@@ -45,27 +45,31 @@ const Index = () => {
       ])
 
       // 处理圈子数据
-      if (circlesRes.status === 'fulfilled' && circlesRes.value.code === 0) {
-        setCircles(circlesRes.value.data.list)
+      if (circlesRes.status === 'fulfilled' && circlesRes.value.code === 200) {
+        const circlesList = circlesRes.value.data || []
+        setCircles(circlesList)
         
         // 获取第一个圈子的当前计划
-        if (circlesRes.value.data.list.length > 0) {
-          const firstCircle = circlesRes.value.data.list[0]
-          const planRes = await CircleService.getCurrentPlan(firstCircle._id)
-          if (planRes.code === 0) {
-            setCurrentPlan(planRes.data)
+        if (circlesList.length > 0 && circlesList[0] && circlesList[0].circle_id) {
+          try {
+            const planRes = await CircleService.getCurrentPlan(circlesList[0].circle_id)
+            if (planRes.code === 200) {
+              setCurrentPlan(planRes.data)
+            }
+          } catch (planError) {
+            console.log('获取计划失败，可能是圈子还没有计划')
           }
         }
       }
 
       // 处理统计数据
-      if (statsRes.status === 'fulfilled' && statsRes.value.code === 0) {
+      if (statsRes.status === 'fulfilled' && statsRes.value.code === 200) {
         setStats(statsRes.value.data)
       }
 
       // 处理今日打卡数据
-      if (todayRes.status === 'fulfilled' && todayRes.value.code === 0) {
-        setTodayDuration(todayRes.value.data.total_duration)
+      if (todayRes.status === 'fulfilled' && todayRes.value.code === 200) {
+        setTodayDuration(todayRes.value.data?.total_duration || 0)
       }
     } catch (error) {
       console.error('加载首页数据失败:', error)
