@@ -5,7 +5,7 @@ import { Circle, CircleMember, CircleState } from '../types'
 // 初始状态
 const initialState: CircleState = {
   circles: [],
-  current_circle: null,
+  currentCircle: null,
   members: [],
   isLoading: false,
   error: null
@@ -35,7 +35,7 @@ function circleReducer(state: CircleState, action: CircleAction): CircleState {
     case 'SET_CURRENT_CIRCLE':
       return {
         ...state,
-        current_circle: action.payload,
+        currentCircle: action.payload,
         isLoading: false,
         error: null
       }
@@ -57,21 +57,21 @@ function circleReducer(state: CircleState, action: CircleAction): CircleState {
       return {
         ...state,
         circles: state.circles.map(circle =>
-          circle._id === action.payload._id ? action.payload : circle
+          circle.circleId === action.payload.circleId ? action.payload : circle
         ),
-        current_circle: state.current_circle?._id === action.payload._id
+        currentCircle: state.currentCircle?.circleId === action.payload.circleId
           ? action.payload
-          : state.current_circle,
+          : state.currentCircle,
         isLoading: false,
         error: null
       }
     case 'REMOVE_CIRCLE':
       return {
         ...state,
-        circles: state.circles.filter(circle => circle._id !== action.payload),
-        current_circle: state.current_circle?._id === action.payload
+        circles: state.circles.filter(circle => circle.circleId !== action.payload),
+        currentCircle: state.currentCircle?.circleId === action.payload
           ? null
-          : state.current_circle,
+          : state.currentCircle,
         isLoading: false,
         error: null
       }
@@ -153,7 +153,7 @@ export function useCircleDispatch() {
   const setCurrentCircle = (circle: Circle | null) => {
     dispatch({ type: 'SET_CURRENT_CIRCLE', payload: circle })
     if (circle) {
-      Taro.setStorageSync('lastCircleId', circle._id)
+      Taro.setStorageSync('lastCircleId', circle.circleId)
     }
   }
 

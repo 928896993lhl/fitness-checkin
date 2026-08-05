@@ -3,16 +3,18 @@ import Taro, { useDidShow, usePullDownRefresh, stopPullDownRefresh, useRouter, u
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useUserState } from '../../../context/UserContext'
 import { CircleService } from '../../../services/CircleService'
-import { Circle, Plan, CircleMember, CircleExerciseStats } from '../../../types'
+import { Circle, Plan, CircleMember, UserExerciseStats } from '../../../types'
+import { isCircleActive } from '../../../types/constants'
 import MemberAvatarList from '../../../components/circle/MemberAvatarList'
 import PlanProgressCard from '../../../components/plan/PlanProgressCard'
+import LooseCheckinPanel from '../../../components/checkin/LooseCheckinPanel'
 import EmptyState from '../../../components/common/EmptyState'
 import LoadingSpinner from '../../../components/common/LoadingSpinner'
 import './detail.scss'
 
 /**
  * 圈子详情页面
- * 显示圈子信息、成员列表、当前计划、运动统计
+ * 显示圈子信息、状态标签、成员列表、当前计划、运动统计、归档/恢复控制
  */
 const CircleDetail = () => {
   const router = useRouter()
@@ -22,16 +24,17 @@ const CircleDetail = () => {
   const [circle, setCircle] = useState<Circle | null>(null)
   const [members, setMembers] = useState<CircleMember[]>([])
   const [currentPlan, setCurrentPlan] = useState<Plan | null>(null)
-  const [stats, setStats] = useState<CircleExerciseStats | null>(null)
+  const [stats, setStats] = useState<UserExerciseStats | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
+  const [panelVisible, setPanelVisible] = useState<boolean>(false)
 
   /**
    * 定义分享内容（hook 必须在组件顶层无条件调用）
    */
   useShareAppMessage(() => ({
     title: `邀请您加入健身打卡圈子「${circle?.name}」`,
-    path: `/pages/circle/join/join?code=${circle?.invite_code}`
+    path: `/pages/circle/join/join?code=${circle?.inviteCode || ''}`
   }))
 
   /**
@@ -107,7 +110,7 @@ const CircleDetail = () => {
    */
   const isCreator = (): boolean => {
     if (!circle || !user) return false
-    return circle.creator_id === user._id
+    return String(circle.creatorId) === String(user.userId)
   }
 
   /**
@@ -125,33 +128,33 @@ const CircleDetail = () => {
    */
   const navigateToPlanDetail = (plan: Plan) => {
     Taro.navigateTo({
-      url: `/pages/plan/detail/detail?planId=${plan._id}`
+      url: `/pages/plan/detail/detail?planId=${plan.planId}`
     })
   }
 
   /**
-   * 跳转到打卡页
+   * 打开宽松打卡面板
    */
-  const navigateToCheckin = () => {
-    if (!currentPlan) {
-      Taro.showToast({
-        title: '暂无进行中的计划',
-        icon: 'none'
-      })
-      return
-    }
-    Taro.navigateTo({
-      url: `/pages/checkin/checkin?planId=${currentPlan._id}`
-    })
+  const openCheckinPanel = () => {
+    if (!isCircleActive(circle?.status)) return
+    setPanelVisible(true)
+  }
+
+  /**
+   * 关闭打卡面板并刷新
+   */
+  const handlePanelClose = () => {
+    setPanelVisible(false)
+    loadData(false)
   }
 
   /**
    * 复制邀请码
    */
   const copyInviteCode = () => {
-    if (!circle?.invite_code) return
+    if (!circle?.inviteCode) return
     Taro.setClipboardData({
-      data: circle.invite_code,
+      data: circle.inviteCode,
       success: () => {
         Taro.showToast({
           title: '邀请码已复制',
@@ -172,6 +175,65 @@ const CircleDetail = () => {
   }
 
   /**
+   * 归档圈子（仅创建者，二次确认）
+   */
+  const handleArchive = () => {
+    if (!circle) return
+    Taro.showModal({
+      title: '归档圈子',
+      content: '归档后圈子将不可加入、不可创建计划、不可打卡，确定归档？',
+      confirmText: '归档',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          await CircleService.archiveCircle(circle.circleId)
+          Taro.showToast({
+            title: '圈子已归档',
+            icon: 'success'
+          })
+          loadData(false)
+        } catch (error) {
+          console.error('归档圈子失败:', error)
+          Taro.showToast({
+            title: error.message || '归档失败，请重试',
+            icon: 'none'
+          })
+        }
+      }
+    })
+  }
+
+  /**
+   * 恢复圈子（仅创建者，二次确认）
+   */
+  const handleRestore = () => {
+    if (!circle) return
+    Taro.showModal({
+      title: '恢复圈子',
+      content: '恢复后圈子将重新开放加入与打卡，确定恢复？',
+      confirmText: '恢复',
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          await CircleService.restoreCircle(circle.circleId)
+          Taro.showToast({
+            title: '圈子已恢复',
+            icon: 'success'
+          })
+          loadData(false)
+        } catch (error) {
+          console.error('恢复圈子失败:', error)
+          Taro.showToast({
+            title: error.message || '恢复失败，请重试',
+            icon: 'none'
+          })
+        }
+      }
+    })
+  }
+
+  /**
    * 格式化时长
    */
   const formatDuration = (minutes: number): string => {
@@ -181,6 +243,8 @@ const CircleDetail = () => {
     const mins = minutes % 60
     return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`
   }
+
+  const circleActive = isCircleActive(circle?.status)
 
   // 加载状态
   if (isLoading) {
@@ -218,34 +282,45 @@ const CircleDetail = () => {
         <View className='header-bg'></View>
         <View className='header-content'>
           <View className='circle-info'>
-            <Text className='circle-name'>{circle.name}</Text>
+            <View className='name-row'>
+              <Text className='circle-name'>{circle.name}</Text>
+              <View className={`status-tag ${circleActive ? 'active' : 'archived'}`}>
+                <View className={`status-dot ${circleActive ? 'active' : 'archived'}`}></View>
+                <Text className='status-text'>{circleActive ? '进行中' : '已归档'}</Text>
+              </View>
+            </View>
             <Text className='circle-desc'>{circle.description || '暂无简介'}</Text>
           </View>
           <View className='circle-meta'>
             <View className='meta-item'>
               <Text className='meta-icon'>👥</Text>
-              <Text className='meta-text'>{members.length}/{circle.max_members}人</Text>
+              <Text className='meta-text'>{members.length}/{circle.maxMembers}人</Text>
             </View>
-            <View className='meta-item'>
+            <View className='meta-item' onClick={copyInviteCode}>
               <Text className='meta-icon'>🔗</Text>
-              <Text className='meta-text' onClick={copyInviteCode}>
-                邀请码: {circle.invite_code}
-              </Text>
+              <Text className='meta-text'>邀请码: {circle.inviteCode}</Text>
             </View>
           </View>
         </View>
       </View>
 
+      {/* 已归档提示条 */}
+      {!circleActive && (
+        <View className='archived-banner'>
+          <Text className='archived-banner-text'>该圈子已归档，仅可查看历史</Text>
+        </View>
+      )}
+
       {/* 操作按钮 */}
       <View className='action-buttons'>
-        {isCreator() && !currentPlan && (
+        {circleActive && isCreator() && !currentPlan && (
           <View className='action-btn primary-btn' onClick={navigateToCreatePlan}>
             <Text className='btn-icon'>🎯</Text>
             <Text className='btn-text'>创建计划</Text>
           </View>
         )}
-        {currentPlan && (
-          <View className='action-btn primary-btn' onClick={navigateToCheckin}>
+        {circleActive && (
+          <View className='action-btn primary-btn' onClick={openCheckinPanel}>
             <Text className='btn-icon'>📸</Text>
             <Text className='btn-text'>今日打卡</Text>
           </View>
@@ -262,16 +337,16 @@ const CircleDetail = () => {
           <Text className='card-title'>运动统计</Text>
           <View className='stats-grid'>
             <View className='stat-item'>
+              <Text className='stat-value'>{stats.todayDuration || 0}分钟</Text>
+              <Text className='stat-label'>今日运动</Text>
+            </View>
+            <View className='stat-item'>
               <Text className='stat-value'>{formatDuration(stats.totalDuration || 0)}</Text>
               <Text className='stat-label'>总运动时长</Text>
             </View>
             <View className='stat-item'>
               <Text className='stat-value'>{stats.checkinDays || 0}</Text>
-              <Text className='stat-label'>总打卡次数</Text>
-            </View>
-            <View className='stat-item'>
-              <Text className='stat-value'>{stats.passedDays || 0}</Text>
-              <Text className='stat-label'>本周活跃</Text>
+              <Text className='stat-label'>打卡天数</Text>
             </View>
             <View className='stat-item'>
               <Text className='stat-value'>{Math.round(stats.completionRate || 0)}%</Text>
@@ -305,10 +380,10 @@ const CircleDetail = () => {
         />
         <View className='member-list'>
           {members.map(member => (
-            <View key={member._id || member.user_id} className='member-item'>
+            <View key={member.id || member.userId} className='member-item'>
               <View className='member-avatar'>
-                {member.user?.avatar_url ? (
-                  <Image src={member.user.avatar_url} mode='aspectFill' />
+                {member.user?.avatarUrl ? (
+                  <Image src={member.user.avatarUrl} mode='aspectFill' />
                 ) : (
                   <View className='avatar-placeholder'>
                     <Text>{member.user?.nickname?.charAt(0) || '?'}</Text>
@@ -318,10 +393,10 @@ const CircleDetail = () => {
               <View className='member-info'>
                 <Text className='member-name'>{member.user?.nickname || '未知用户'}</Text>
                 <Text className='member-role'>
-                  {member.role === 2 || member.role === 'creator' ? '创建者' : '成员'}
+                  {member.role === 2 ? '创建者' : member.role === 1 ? '管理员' : '成员'}
                 </Text>
               </View>
-              {(member.user_id === circle.creator_id || member.user?._id === circle.creator_id) && (
+              {member.role === 2 && (
                 <View className='creator-badge'>
                   <Text className='badge-text'>👑</Text>
                 </View>
@@ -348,8 +423,29 @@ const CircleDetail = () => {
             <Text className='settings-text'>复制邀请码</Text>
             <Text className='settings-arrow'>›</Text>
           </View>
+          {circleActive ? (
+            <View className='settings-item danger' onClick={handleArchive}>
+              <Text className='settings-icon'>📦</Text>
+              <Text className='settings-text'>归档圈子</Text>
+              <Text className='settings-arrow'>›</Text>
+            </View>
+          ) : (
+            <View className='settings-item' onClick={handleRestore}>
+              <Text className='settings-icon'>♻️</Text>
+              <Text className='settings-text'>恢复圈子</Text>
+              <Text className='settings-arrow'>›</Text>
+            </View>
+          )}
         </View>
       )}
+
+      {/* 宽松打卡半屏面板 */}
+      <LooseCheckinPanel
+        visible={panelVisible}
+        onClose={handlePanelClose}
+        defaultPlanId={currentPlan?.planId}
+        defaultCircleId={circleId}
+      />
     </ScrollView>
   )
 }

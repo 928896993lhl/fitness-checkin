@@ -104,50 +104,6 @@
   }
 }
 
-.section-title {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20rpx;
-  display: block;
-}
-
-.stats-section {
-  padding: 30rpx;
-  background-color: #fff;
-  margin-bottom: 20rpx;
-  
-  .stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16rpx;
-  }
-}
-
-.circles-section {
-  background-color: #fff;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-  
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20rpx;
-    
-    .circle-count {
-      font-size: 26rpx;
-      color: #666;
-    }
-  }
-  
-  .circles-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16rpx;
-  }
-}
-
 .menu-section {
   background-color: #fff;
   margin-bottom: 20rpx;

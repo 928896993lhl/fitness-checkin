@@ -34,7 +34,7 @@ const PlanDetail = () => {
       const [planRes, progressRes, checkinsRes] = await Promise.allSettled([
         PlanService.getPlanDetail(planId),
         PlanService.getPlanProgress(planId),
-        CheckinService.getCheckinsByPlan(planId, { page_size: 10 })
+        CheckinService.getCheckinsByPlan(planId, { pageSize: 10 })
       ])
 
       if (planRes.status === 'fulfilled' && planRes.value.code === 200) {
@@ -46,7 +46,7 @@ const PlanDetail = () => {
       }
 
       if (checkinsRes.status === 'fulfilled' && checkinsRes.value.code === 200) {
-        setRecentCheckins(checkinsRes.value.data.list)
+        setRecentCheckins(checkinsRes.value.data?.records || [])
       }
     } catch (error) {
       console.error('加载计划详情失败:', error)
@@ -83,7 +83,7 @@ const PlanDetail = () => {
   const navigateToCheckin = () => {
     if (!plan) return
     Taro.navigateTo({
-      url: `/pages/checkin/checkin?planId=${plan._id}`
+      url: `/pages/checkin/checkin?planId=${plan.planId}`
     })
   }
 
@@ -122,13 +122,13 @@ const PlanDetail = () => {
           <View className='meta-item'>
             <Text className='meta-icon'>📅</Text>
             <Text className='meta-text'>
-              {formatDateDisplay(plan.start_date)} - {formatDateDisplay(plan.end_date)}
+              {formatDateDisplay(plan.startDate)} - {formatDateDisplay(plan.endDate)}
             </Text>
           </View>
           <View className='meta-item'>
             <Text className='meta-icon'>📊</Text>
             <Text className='meta-text'>
-              状态: {plan.status === 'active' ? '进行中' : plan.status === 'completed' ? '已完成' : '未开始'}
+              状态: {plan.status === 1 ? '进行中' : plan.status === 2 ? '已完成' : '未开始'}
             </Text>
           </View>
         </View>
@@ -154,28 +154,28 @@ const PlanDetail = () => {
             <Text className='goal-icon'>🎯</Text>
             <View className='goal-info'>
               <Text className='goal-label'>每日目标</Text>
-              <Text className='goal-value'>{plan.daily_duration_goal}分钟/天</Text>
+              <Text className='goal-value'>{plan.dailyDurationGoal}分钟/天</Text>
             </View>
           </View>
           <View className='goal-item'>
             <Text className='goal-icon'>🏆</Text>
             <View className='goal-info'>
               <Text className='goal-label'>总目标</Text>
-              <Text className='goal-value'>{formatDuration(plan.total_duration_goal)}</Text>
+              <Text className='goal-value'>{formatDuration(plan.totalDurationGoal)}</Text>
             </View>
           </View>
           <View className='goal-item'>
             <Text className='goal-icon'>⏱️</Text>
             <View className='goal-info'>
               <Text className='goal-label'>最低打卡时长</Text>
-              <Text className='goal-value'>{plan.min_duration_per_checkin}分钟</Text>
+              <Text className='goal-value'>{plan.minDurationPerCheckin}分钟</Text>
             </View>
           </View>
         </View>
       </View>
 
       {/* 打卡按钮 */}
-      {plan.status === 'active' && (
+      {plan.status === 1 && (
         <View className='checkin-action'>
           <View className='checkin-btn' onClick={navigateToCheckin}>
             <Text className='checkin-btn-icon'>📸</Text>
@@ -198,7 +198,7 @@ const PlanDetail = () => {
           <View className='checkins-list'>
             {recentCheckins.map(record => (
               <CheckinCard
-                key={record._id}
+                key={record.recordId}
                 record={record}
                 showUser
               />

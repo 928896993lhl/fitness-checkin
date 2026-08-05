@@ -103,4 +103,52 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
     List<Map<String, Object>> selectDailyStatsByPlanId(@Param("planId") Long planId, 
                                                       @Param("startDate") LocalDateTime startDate, 
                                                       @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * 查询用户指定日期的总打卡时长（用户维度，跨计划/宽松打卡）
+     * 
+     * @param userId 用户ID
+     * @param date   日期（yyyy-MM-dd）
+     * @return 总时长（分钟）
+     */
+    @Select("SELECT COALESCE(SUM(duration), 0) FROM checkin_records WHERE user_id = #{userId} AND DATE(checkin_time) = #{date}")
+    Integer selectTodayDurationByUserId(@Param("userId") Long userId, @Param("date") String date);
+
+    /**
+     * 查询用户总打卡时长（用户维度）
+     * 
+     * @param userId 用户ID
+     * @return 总时长（分钟）
+     */
+    @Select("SELECT COALESCE(SUM(duration), 0) FROM checkin_records WHERE user_id = #{userId}")
+    Integer selectTotalDurationByUserId(@Param("userId") Long userId);
+
+    /**
+     * 查询用户累计打卡天数（用户维度）
+     * 
+     * @param userId 用户ID
+     * @return 打卡天数
+     */
+    @Select("SELECT COUNT(DISTINCT DATE(checkin_time)) FROM checkin_records WHERE user_id = #{userId}")
+    Integer selectCheckinDaysByUserId(@Param("userId") Long userId);
+
+    /**
+     * 查询用户总打卡次数（用户维度）
+     * 
+     * @param userId 用户ID
+     * @return 打卡次数
+     */
+    @Select("SELECT COUNT(*) FROM checkin_records WHERE user_id = #{userId}")
+    Integer selectTotalCheckinsByUserId(@Param("userId") Long userId);
+
+    /**
+     * 查询用户全部打卡日期（去重、倒序，用于连续打卡 Java 计算）
+     * 
+     * @param userId 用户ID
+     * @return 打卡日期列表（yyyy-MM-dd）
+     */
+    @Select("SELECT DISTINCT DATE_FORMAT(checkin_time, '%Y-%m-%d') " +
+            "FROM checkin_records WHERE user_id = #{userId} " +
+            "ORDER BY DATE_FORMAT(checkin_time, '%Y-%m-%d') DESC")
+    List<String> selectDistinctCheckinDatesByUserId(@Param("userId") Long userId);
 }

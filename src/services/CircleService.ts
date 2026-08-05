@@ -2,13 +2,12 @@ import { request } from '../utils/request'
 import {
   Circle,
   CircleMember,
-  CircleExerciseStats,
+  UserExerciseStats,
   Plan,
   CreateCircleRequest,
   JoinCircleRequest,
   GetCirclesRequest,
-  APIResponse,
-  PaginatedResult
+  APIResponse
 } from '../types'
 
 /**
@@ -23,8 +22,18 @@ export class CircleService {
     return request('/circles/join', 'POST', joinData)
   }
 
-  static async getMyCircles(params: GetCirclesRequest = {}): Promise<APIResponse<PaginatedResult<Circle>>> {
-    return request('/circles/my')
+  static async getMyCircles(params: GetCirclesRequest = {}): Promise<APIResponse<Circle[]>> {
+    const query: Record<string, any> = {}
+    if (params.page !== undefined) {
+      query.page = params.page
+    }
+    if (params.pageSize !== undefined) {
+      query.size = params.pageSize
+    }
+    if (params.status !== undefined) {
+      query.status = params.status
+    }
+    return request('/circles/my', 'GET', query)
   }
 
   static async getCircleDetail(circleId: string): Promise<APIResponse<Circle>> {
@@ -36,15 +45,15 @@ export class CircleService {
   }
 
   static async updateCircle(circleData: {
-    circle_id: string
+    circleId: string
     name?: string
     description?: string
-    max_members?: number
+    maxMembers?: number
   }): Promise<APIResponse<Circle>> {
-    return request(`/circles/${circleData.circle_id}`, 'PUT', circleData)
+    return request(`/circles/${circleData.circleId}`, 'PUT', circleData)
   }
 
-  static async generateNewInviteCode(circleId: string): Promise<APIResponse<{ invite_code: string }>> {
+  static async generateNewInviteCode(circleId: string): Promise<APIResponse<{ inviteCode: string }>> {
     return request(`/circles/${circleId}/invite-code`, 'POST')
   }
 
@@ -52,11 +61,18 @@ export class CircleService {
     return request(`/circles/${circleId}/archive`, 'POST')
   }
 
+  static async restoreCircle(circleId: string): Promise<APIResponse<null>> {
+    return request(`/circles/${circleId}/restore`, 'POST')
+  }
+
   static async getCurrentPlan(circleId: string): Promise<APIResponse<Plan | null>> {
     return request(`/plans/circle/${circleId}`)
   }
 
-  static async getCircleStats(circleId: string): Promise<APIResponse<CircleExerciseStats>> {
-    return request('/checkin/stats/0')
+  /**
+   * 获取圈子统计（本轮后端圈子维度统计未改造，临时复用用户维度统计接口）
+   */
+  static async getCircleStats(circleId: string): Promise<APIResponse<UserExerciseStats>> {
+    return request('/checkin/stats/mine')
   }
 }

@@ -24,6 +24,7 @@ const History = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [page, setPage] = useState<number>(1)
   const [hasMore, setHasMore] = useState<boolean>(true)
+  const [total, setTotal] = useState<number>(0)
 
   /**
    * 加载历史记录
@@ -37,24 +38,25 @@ const History = () => {
       const currentPage = reset ? 1 : page
       const params: any = {
         page: currentPage,
-        page_size: 20
+        pageSize: 20
       }
 
       if (selectedPlan !== 'all') {
-        params.plan_id = selectedPlan
+        params.planId = selectedPlan
       }
 
       const result = await CheckinService.getMyCheckins(params)
 
       if (result.code === 200) {
-        const rawData = result.data || []
-        const newRecords = Array.isArray(rawData) ? rawData : (rawData.records || [])
-        if (reset) {
-          setRecords(newRecords)
-        } else {
-          setRecords([...records, ...newRecords])
-        }
-        setHasMore(newRecords.length === 20)
+        const rawData = result.data
+        const data: any = rawData || { records: [], total: 0 }
+        const newRecords = (Array.isArray(data) ? data : (data.records || [])) as CheckinRecord[]
+        const totalCount = Array.isArray(data) ? newRecords.length : (data.total || 0)
+
+        const mergedRecords = reset ? newRecords : [...records, ...newRecords]
+        setRecords(mergedRecords)
+        setTotal(totalCount)
+        setHasMore(mergedRecords.length < totalCount)
         setPage(currentPage + 1)
       }
     } catch (error) {
@@ -73,7 +75,9 @@ const History = () => {
     try {
       const result = await PlanService.getPlansByCircle(circleId)
       if (result.code === 200) {
-        setPlans((result.data || result.data?.records || []))
+        const data: any = result.data
+        const list = (Array.isArray(data) ? data : (data?.records || [])) as Plan[]
+        setPlans(list)
       }
     } catch (error) {
       console.error('加载计划列表失败:', error)
@@ -117,7 +121,7 @@ const History = () => {
   /**
    * 计算总运动时长
    */
-  const totalDuration = records.reduce((sum, record) => sum + record.duration, 0)
+  const totalDuration = (records || []).reduce((sum, record) => sum + (record.duration || 0), 0)
 
   return (
     <View className='history-page'>
@@ -138,9 +142,9 @@ const History = () => {
             </View>
             {plans.map(plan => (
               <View
-                key={plan._id}
-                className={`filter-item ${selectedPlan === plan._id ? 'active' : ''}`}
-                onClick={() => handlePlanChange(plan._id)}
+                key={plan.planId}
+                className={`filter-item ${selectedPlan === plan.planId ? 'active' : ''}`}
+                onClick={() => handlePlanChange(plan.planId)}
               >
                 <Text className='filter-text'>{plan.name}</Text>
               </View>
@@ -185,7 +189,7 @@ const History = () => {
           <View className='records-list'>
             {records.map(record => (
               <CheckinCard
-                key={record._id}
+                key={record.recordId}
                 record={record}
                 showDate
               />

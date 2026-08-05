@@ -73,28 +73,11 @@
   
   .card-footer {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding-top: 16rpx;
     border-top: 1rpx solid #f3f4f6;
-    
-    .invite-code {
-      display: flex;
-      align-items: center;
-      
-      .code-label {
-        font-size: 24rpx;
-        color: #666;
-        margin-right: 8rpx;
-      }
-      
-      .code-value {
-        font-size: 24rpx;
-        color: #3b82f6;
-        font-weight: 500;
-      }
-    }
-    
+
     .status-tag {
       padding: 8rpx 16rpx;
       border-radius: 20rpx;

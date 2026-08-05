@@ -55,6 +55,9 @@ public class PlanServiceImpl implements PlanService {
                           Integer circleTotalGoal, Integer minDurationPerCheckin) {
         // 验证圈子存在且用户是管理员
         Circle circle = circleService.getCircleById(circleId);
+        if (circle.getStatus() != 1) {
+            throw BusinessException.badRequest("圈子已归档，无法创建计划");
+        }
         if (!circleService.isCircleAdmin(circleId, userId)) {
             throw BusinessException.forbidden("只有圈子管理员可以创建计划");
         }

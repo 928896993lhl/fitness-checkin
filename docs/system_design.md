@@ -1,680 +1,239 @@
-# 健身打卡后端系统设计文档
+# 健身打卡微信小程序 — 本轮系统设计文档（宽松打卡 / 字段统一 / 圈子归档 / 我的页精简）
+
+> 架构师：高见远（Bob）｜团队：software-fitness-opt
+> 依据：产品经理许清楚已确认的需求定义 + docs/team-context.md 已核实技术事实
+
+---
 
 ## Part A: System Design
 
+### 0. 方案选型结论（字段命名统一 A/B/C）
+
+**结论：采用方案 C —— 前端 types 全部改驼峰 + 修复全部访问点；后端命名零改动。**
+
+| 方案 | 做法 | 判定 | 核心理由 |
+|---|---|---|---|
+| A | 后端全局配置 `property-naming-strategy: SNAKE_CASE` | ❌ 否决 | Jackson 命名策略**只对 POJO 生效，对 `Map<String,Object>` 的 key 不做转换**。而圈子详情、成员列表、统计、登录响应、文件上传等**全部是 Map 返回**（`circleId/inviteCode/userId/token...` 照旧驼峰）；只有实体返回（`/circles/my` 的 `List<Circle>`、打卡记录实体）会变下划线。结果是**同一页面两种命名混用**，比现状更糟。 |
+| B | 后端实体逐个加 `@JsonProperty` | ❌ 否决 | 同样不解决 Map key；需注解 30+ 字段，维护成本高，治标不治本。 |
+| C | 前端 types 全改驼峰 + 修访问点 | ✅ 采纳 | 后端（实体 + Map）**已经是统一的驼峰真相源**；前端 types 是纯 TS 接口，改动机械可控；登录/统计/详情等 Map 输出天然一致；后端命名零改动、零回归风险。 |
+
+**登录链路影响确认（方案C下）：**
+- `AuthController.wxLogin` 返回 `Map {token, userId, openid, nickname, avatarUrl}` —— Map key 不做任何转换，**`login.tsx` 读 `result.data.token` 不受影响**（token 为单字，即使方案A也不会变）。
+- `UserContext.login(user)` 存 `user.token` → 不受影响。
+- `/auth/userinfo` 返回 Map `{userId, openid, nickname, avatarUrl, createdAt}` → 不受影响。
+- 唯一需要同步的是 `UserService.login` 的 TS 返回类型声明（当前错误声明为 `{user, token, isNewUser}`，实际是扁平 Map），T01 一并修正。
+
+**圈子状态统一（二选一决策）：采用「数字 1/0 线上传输」**
+- 后端 `Circle.status` 与数据库现状即为 Integer（1=活跃，0=已归档/原禁用），零后端改动。
+- 前端 `CircleStatus` 字符串枚举（'active'/'archived'）**删除**，改为 `status: 0 | 1`，提供 `isCircleActive(status)` 助手（现 `Number(circle.status) === 1` 判断保留并收敛到助手函数）。
+- 成员 `role` 同理：数字 `0普通 / 1管理员 / 2创建者`，前端 `UserRole` 字符串枚举删除，改 number + `isCreatorRole(role)`。
+
+---
+
 ### 1. Implementation Approach
 
-#### 核心技术挑战
-1. **微信小程序登录集成**：需要与微信服务器通信，获取用户openid和session_key，生成自定义登录态
-2. **圈子与计划管理**：复杂的业务逻辑，包括圈子成员管理、计划状态流转、打卡验证等
-3. **文件上传与存储**：运动照片上传到服务器本地磁盘，通过Nginx提供静态文件服务
-4. **定时任务调度**：每日汇总推送和周期结束提醒需要可靠的定时任务机制
-5. **数据一致性**：多人打卡时保证数据一致性，避免并发问题
+#### 核心难点
+1. **字段命名端到端不一致（本轮正确性核心）**：后端实体/Map 全驼峰，前端 types 全下划线 + 39+ 处访问点用 `_id`。选方案C统一到后端真相源。
+2. **宽松打卡**：`POST /checkin` 的 `planId` 由必填改可选，需在 Service 层分流"计划校验"与"全局时长校验"；新增 `circle_id` 列与字段。
+3. **用户维度统计**：新增 `/checkin/stats/mine`，其中 `currentStreak`（连续打卡）与 `completionRate`（仅进行中计划）需要新的聚合逻辑。
+4. **圈子归档控制入口**：新增 archive/restore 接口（仅创建者），前端详情页按状态渲染。
+5. **底部半屏打卡面板（非跳页）**：Taro 小程序无内置半屏面板，需自定义固定定位 View + 遮罩 + 上滑动画。
 
-#### 框架和库选择
-- **Spring Boot 3.2+**：主框架，提供快速开发、自动配置、依赖管理
-- **Spring Security**：安全框架，处理认证和授权
-- **MyBatis-Plus**：ORM框架，简化数据库操作
-- **MySQL 8.0**：关系型数据库，存储业务数据
-- **阿里云OSS SDK**：本地文件存储（可选，后续可迁移到云存储）
-- **Spring Task**：定时任务调度
-- **Lombok**：简化Java代码
-- **Hutool**：Java工具库，提供常用工具方法
-- **微信小程序SDK**：与微信服务器通信
+#### 技术选型（沿用现有栈，不引入新依赖）
+- 前端：Taro 3 + React + TypeScript（现有）；面板用 Taro `View` 自绘 + CSS 动画；本地记忆用 `Taro.setStorageSync`。
+- 后端：Spring Boot 3.2.5 + MyBatis-Plus + MySQL（现有）；字段统一不依赖 Jackson 配置，全部走方案C。
+- 架构模式：前后端分层架构不变（Controller / Service / Mapper / Entity；前端 Page / Component / Service / Context）。
 
-#### 架构模式
-采用**分层架构**（Layered Architecture）：
-- **Controller层**：处理HTTP请求，参数校验，返回响应
-- **Service层**：业务逻辑处理，事务管理
-- **DAO层**：数据访问层，与数据库交互
-- **Entity层**：数据实体类
-- **Config层**：配置类
-- **Common层**：通用工具类、常量、异常处理
+---
 
 ### 2. File List
 
+**后端（fitness-checkin-backend/src/main/java/com/fitness/checkin/）**
 ```
-fitness-checkin-backend/
-├── pom.xml                                    # Maven项目配置
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── com/
-│   │   │       └── fitness/
-│   │   │           └── checkin/
-│   │   │               ├── Application.java          # Spring Boot启动类
-│   │   │               ├── config/                   # 配置类
-│   │   │               │   ├── WebConfig.java         # Web配置
-│   │   │               │   ├── SecurityConfig.java    # 安全配置
-│   │   │               │   ├── MybatisPlusConfig.java # MyBatis-Plus配置
-│   │   │               │   └── WxMaConfig.java        # 微信小程序配置
-│   │   │               ├── controller/               # 控制器
-│   │   │               │   ├── AuthController.java    # 认证控制器
-│   │   │               │   ├── CircleController.java  # 圈子控制器
-│   │   │               │   ├── PlanController.java    # 计划控制器
-│   │   │               │   ├── CheckinController.java # 打卡控制器
-│   │   │               │   └── FileController.java    # 文件控制器
-│   │   │               ├── service/                  # 服务层
-│   │   │               │   ├── AuthService.java       # 认证服务
-│   │   │               │   ├── CircleService.java     # 圈子服务
-│   │   │               │   ├── PlanService.java       # 计划服务
-│   │   │               │   ├── CheckinService.java    # 打卡服务
-│   │   │               │   ├── FileService.java       # 文件服务
-│   │   │               │   └── NotifyService.java     # 通知服务
-│   │   │               ├── service/impl/             # 服务实现
-│   │   │               │   ├── AuthServiceImpl.java
-│   │   │               │   ├── CircleServiceImpl.java
-│   │   │               │   ├── PlanServiceImpl.java
-│   │   │               │   ├── CheckinServiceImpl.java
-│   │   │               │   ├── FileServiceImpl.java
-│   │   │               │   └── NotifyServiceImpl.java
-│   │   │               ├── mapper/                   # MyBatis Mapper接口
-│   │   │               │   ├── UserMapper.java
-│   │   │               │   ├── CircleMapper.java
-│   │   │               │   ├── CircleMemberMapper.java
-│   │   │               │   ├── PlanMapper.java
-│   │   │               │   └── CheckinRecordMapper.java
-│   │   │               ├── entity/                   # 实体类
-│   │   │               │   ├── User.java
-│   │   │               │   ├── Circle.java
-│   │   │               │   ├── CircleMember.java
-│   │   │               │   ├── Plan.java
-│   │   │               │   └── CheckinRecord.java
-│   │   │               ├── dto/                      # 数据传输对象
-│   │   │               │   ├── LoginRequest.java
-│   │   │               │   ├── LoginResponse.java
-│   │   │               │   ├── CircleCreateRequest.java
-│   │   │               │   ├── PlanCreateRequest.java
-│   │   │               │   ├── CheckinRequest.java
-│   │   │               │   └── Result.java           # 统一响应格式
-│   │   │               ├── common/                   # 通用类
-│   │   │               │   ├── ResultCode.java       # 响应状态码
-│   │   │               │   ├── BusinessException.java # 业务异常
-│   │   │               │   ├── GlobalExceptionHandler.java # 全局异常处理
-│   │   │               │   └── Constants.java        # 常量
-│   │   │               ├── task/                     # 定时任务
-│   │   │               │   ├── DailySummaryTask.java # 每日汇总任务
-│   │   │               │   └── PlanEndReminderTask.java # 计划结束提醒
-│   │   │               └── util/                     # 工具类
-│   │   │                   ├── WxMaUtil.java         # 微信小程序工具
-│   │   │                   └── FileUtil.java         # 文件工具
-│   │   └── resources/
-│   │       ├── application.yml                      # 应用配置
-│   │       ├── application-dev.yml                  # 开发环境配置
-│   │       ├── application-prod.yml                 # 生产环境配置
-│   │       ├── logback-spring.xml                   # 日志配置
-│   │       └── mapper/                              # MyBatis XML映射文件
-│   │           ├── UserMapper.xml
-│   │           ├── CircleMapper.xml
-│   │           ├── CircleMemberMapper.xml
-│   │           ├── PlanMapper.xml
-│   │           └── CheckinRecordMapper.xml
-│   └── test/                                      # 测试代码
-├── sql/                                           # SQL脚本
-│   └── init.sql                                   # 数据库初始化脚本
-├── nginx/                                         # Nginx配置
-│   └── fitness-checkin.conf
-├── deploy/                                        # 部署脚本
-│   ├── deploy.sh
-│   └── fitness-checkin.service                    # systemd服务文件
-└── docs/                                          # 文档
-    └── API.md                                     # API接口文档
+dto/CheckinRequest.java                     # 改造：planId 可空、新增 circleId、duration 全局 1-480
+entity/CheckinRecord.java                   # 改造：新增 circleId
+mapper/CheckinRecordMapper.java             # 改造：新增用户维度统计/连续打卡日期/分页查询
+service/CheckinService.java                 # 改造：checkin 签名加 circleId；新增 mine 统计/记录方法
+service/impl/CheckinServiceImpl.java        # 改造：宽松打卡分流 + mine 统计/记录实现
+controller/CheckinController.java           # 改造：POST /checkin 传 circleId；新增 /stats/mine、/records/mine；修 total
+controller/CircleController.java            # 改造：新增 POST /{id}/archive、POST /{id}/restore
+service/CircleService.java                  # 改造：新增 archiveCircle/restoreCircle
+service/impl/CircleServiceImpl.java         # 改造：实现归档/恢复；join 已归档拦截文案
+service/impl/PlanServiceImpl.java           # 改造：createPlan 拦截已归档圈子
+sql/init.sql                                # 改造：checkin_records 加 circle_id、plan_id 允许 NULL
 ```
+> 注：生产库用 ALTER 语句（见 §5 SQL），init.sql 同步更新供新环境使用。
+
+**前端（src/）**
+```
+types/index.ts                             # 改造：全部实体/请求/分页类型驼峰化 + status/role 数字
+types/constants.ts                         # 改造：新增 lastExerciseType 存储键、时长档位常量、状态助手
+services/CheckinService.ts                 # 改造：createCheckin 驼峰 + remark；getMyStats→/stats/mine；getMyCheckins→/records/mine
+services/CircleService.ts                  # 改造：驼峰 + archiveCircle/restoreCircle
+services/PlanService.ts                    # 改造：驼峰
+services/UserService.ts                    # 改造：login 返回类型对齐后端扁平 Map
+pages/index/index.tsx                      # 改造：接入打卡面板；驼峰访问点
+pages/circle/detail/detail.tsx             # 改造：状态标签/归档提示/归档恢复/隐藏按钮/邀请码；接入面板
+pages/circle/circle.tsx                    # 改造：驼峰访问点
+pages/circle/create/create.tsx             # 改造：驼峰访问点
+pages/circle/join/join.tsx                 # 改造：驼峰访问点
+pages/plan/detail/detail.tsx               # 改造：驼峰访问点
+pages/profile/profile.tsx                  # 改造：精简（删运动数据/我的圈子/创建/加入）；加设置占位入口
+pages/profile/settings/settings.tsx/.scss/.config.ts  # 新增：设置占位页（P1）
+pages/profile/history/history.tsx          # 改造：/records/mine 分页 + 驼峰访问点
+pages/checkin/checkin.tsx                  # 改造：保留兼容旧入口，字段驼峰（不再作为主入口）
+components/checkin/LooseCheckinPanel.tsx/.scss        # 新增：宽松打卡半屏面板（P0 核心）
+components/checkin/CheckinButton.tsx       # 改造：disabled 逻辑放宽（无计划也可打卡）
+components/checkin/CheckinCard.tsx         # 改造：驼峰访问点
+components/circle/CircleCard.tsx           # 改造：驼峰访问点；邀请码默认不显示（需求五修正）
+components/circle/MemberAvatarList.tsx     # 改造：驼峰访问点
+components/plan/PlanProgressCard.tsx       # 改造：驼峰访问点
+context/UserContext.tsx / CircleContext.tsx / PlanContext.tsx  # 改造：驼峰访问点
+```
+
+---
 
 ### 3. Data Structures and Interfaces
 
-```mermaid
-classDiagram
-    class User {
-        +Long id
-        +String openid
-        +String nickname
-        +String avatarUrl
-        +Date createdAt
-        +Date updatedAt
-    }
-    
-    class Circle {
-        +Long id
-        +String name
-        +Long creatorId
-        +Integer maxMembers
-        +String inviteCode
-        +Integer status
-        +Date createdAt
-        +Date updatedAt
-    }
-    
-    class CircleMember {
-        +Long id
-        +Long circleId
-        +Long userId
-        +Integer role
-        +Date joinedAt
-    }
-    
-    class Plan {
-        +Long id
-        +Long circleId
-        +String name
-        +Date startDate
-        +Date endDate
-        +Integer totalDurationGoal
-        +Integer dailyDurationGoal
-        +Integer circleTotalGoal
-        +Integer minDurationPerCheckin
-        +Integer status
-        +Date createdAt
-        +Date updatedAt
-    }
-    
-    class CheckinRecord {
-        +Long id
-        +Long planId
-        +Long userId
-        +Integer duration
-        +String exerciseType
-        +String photoUrl
-        +Date checkinTime
-        +Date createdAt
-    }
-    
-    class AuthService {
-        +login(LoginRequest) LoginResponse
-        +getUserInfo(Long) User
-        +updateUserInfo(Long, User) void
-    }
-    
-    class CircleService {
-        +createCircle(CircleCreateRequest) Circle
-        +joinCircle(Long userId, String inviteCode) Circle
-        +getCircleDetail(Long circleId) Circle
-        +getCircleMembers(Long circleId) List~CircleMember~
-        +getUserCircles(Long userId) List~Circle~
-    }
-    
-    class PlanService {
-        +createPlan(PlanCreateRequest) Plan
-        +startPlan(Long planId) Plan
-        +getPlanDetail(Long planId) Plan
-        +getCirclePlans(Long circleId) List~Plan~
-        +updatePlanStatus() void
-    }
-    
-    class CheckinService {
-        +checkin(CheckinRequest) CheckinRecord
-        +getCheckinRecords(Long planId, Long userId) List~CheckinRecord~
-        +getUserDailyDuration(Long planId, Long userId) Integer
-        +getUserTotalDuration(Long planId, Long userId) Integer
-        +getCircleTotalDuration(Long planId) Integer
-    }
-    
-    class FileService {
-        +uploadFile(MultipartFile) String
-        +getFileUrl(String) String
-        +deleteFile(String) void
-    }
-    
-    class NotifyService {
-        +sendDailySummary(Long circleId) void
-        +sendPlanEndReminder(Long planId, Long userId) void
-        +sendWxSubscribeMessage(Long userId, String templateId, Map data) void
-    }
-    
-    User "1" -- "n" CircleMember : belongs to
-    Circle "1" -- "n" CircleMember : has
-    Circle "1" -- "n" Plan : has
-    Plan "1" -- "n" CheckinRecord : has
-    User "1" -- "n" CheckinRecord : creates
-    
-    AuthService --> User
-    CircleService --> Circle
-    CircleService --> CircleMember
-    PlanService --> Plan
-    CheckinService --> CheckinRecord
-    FileService --> String
-    NotifyService --> User
+见 `docs/class-diagram.mermaid`（已同步本文件 §3.1 内容）。
+
+关键接口定义：
+- `POST /checkin` 请求体（改造后）：
+```json
+{ "planId": null, "circleId": 1, "duration": 30, "exerciseType": "running", "photoUrl": "", "remark": "" }
 ```
+- `GET /checkin/stats/mine` 响应 data：
+```json
+{ "todayDuration": 30, "totalDuration": 120, "checkinDays": 3, "totalCheckins": 5, "currentStreak": 2, "completionRate": 66.7 }
+```
+- `GET /checkin/records/mine?page=1&size=20&planId=&exerciseType=&startDate=&endDate=` 响应 data：
+```json
+{ "records": [], "total": 0, "page": 1, "size": 20 }
+```
+
+---
 
 ### 4. Program Call Flow
 
-```mermaid
-sequenceDiagram
-    participant MiniProgram as 微信小程序
-    participant AuthController as 认证控制器
-    participant AuthService as 认证服务
-    participant CircleController as 圈子控制器
-    participant CircleService as 圈子服务
-    participant PlanController as 计划控制器
-    participant PlanService as 计划服务
-    participant CheckinController as 打卡控制器
-    participant CheckinService as 打卡服务
-    participant FileController as 文件控制器
-    participant FileService as 文件服务
-    participant DailyTask as 每日汇总任务
-    participant NotifyService as 通知服务
-    
-    Note over MiniProgram,NotifyService: 微信小程序登录流程
-    MiniProgram->>AuthController: POST /api/auth/login (code)
-    AuthController->>AuthService: login(code)
-    AuthService->>AuthService: 调用微信接口获取openid
-    AuthService->>AuthService: 生成JWT token
-    AuthService-->>AuthController: LoginResponse(token, user)
-    AuthController-->>MiniProgram: 返回token和用户信息
-    
-    Note over MiniProgram,NotifyService: 创建圈子流程
-    MiniProgram->>CircleController: POST /api/circles (token, data)
-    CircleController->>CircleService: createCircle(data)
-    CircleService->>CircleService: 创建圈子记录
-    CircleService->>CircleService: 创建圈子成员关系
-    CircleService-->>CircleController: Circle对象
-    CircleController-->>MiniProgram: 返回圈子信息
-    
-    Note over MiniProgram,NotifyService: 创建计划流程
-    MiniProgram->>PlanController: POST /api/plans (token, data)
-    PlanController->>PlanService: createPlan(data)
-    PlanService->>PlanService: 验证用户权限
-    PlanService->>PlanService: 创建计划记录
-    PlanService-->>PlanController: Plan对象
-    PlanController-->>MiniProgram: 返回计划信息
-    
-    Note over MiniProgram,NotifyService: 打卡流程
-    MiniProgram->>CheckinController: POST /api/checkins (token, data)
-    CheckinController->>CheckinService: checkin(data)
-    CheckinService->>CheckinService: 验证计划状态
-    CheckinService->>CheckinService: 验证打卡时长
-    CheckinService->>CheckinService: 创建打卡记录
-    CheckinService-->>CheckinController: CheckinRecord对象
-    CheckinController-->>MiniProgram: 返回打卡结果
-    
-    Note over MiniProgram,NotifyService: 文件上传流程
-    MiniProgram->>FileController: POST /api/files/upload (file)
-    FileController->>FileService: uploadFile(file)
-    FileService->>FileService: 保存文件到本地
-    FileService->>FileService: 生成访问URL
-    FileService-->>FileController: 文件URL
-    FileController-->>MiniProgram: 返回文件URL
-    
-    Note over MiniProgram,NotifyService: 每日汇总推送流程
-    DailyTask->>DailyTask: 执行定时任务
-    DailyTask->>PlanService: 获取所有进行中的计划
-    loop 每个计划
-        DailyTask->>CheckinService: 获取今日打卡记录
-        DailyTask->>NotifyService: 发送汇总通知
-        NotifyService->>NotifyService: 调用微信订阅消息接口
-    end
-```
+见 `docs/sequence-diagram.mermaid`（宽松打卡全流程 + 圈子归档流程）。
 
-### 5. Anything UNCLEAR
+---
 
-1. **微信订阅消息权限**：需要用户主动订阅消息，如何引导用户订阅？
-2. **图片存储路径**：建议存储在 `/data/fitness-checkin/uploads/` 目录下，按日期分目录
-3. **每日汇总推送时间**：建议每天晚上8点（20:00）推送
-4. **圈子人数限制**：硬性限制2-8人，不允许调整
-5. **运动时长上限**：建议设置最大单次打卡时长为24小时（1440分钟）
-6. **计划周期**：支持天和周两种单位，默认为周
-7. **圈子名称**：允许同名圈子
-8. **邀请机制**：通过邀请码加入，邀请码为6位随机字符串
-9. **数据保留**：永久保留历史数据
-10. **并发打卡**：同一天多次打卡，数据独立存储，查询时合并计算总时长
+### 5. Anything UNCLEAR（假设与待确认）
+
+1. **归档圈子后其进行中计划如何处置**：需求未明说。假设：归档后不允许新打卡（后端 `checkin` 校验关联圈子未归档）、不允许创建计划、不允许加入；历史计划与记录保留可查看。若产品希望"归档后计划自动结束"，需追加 T03 的级联逻辑。
+2. **`completionRate` 口径**：需求"仅针对进行中计划"。假设为：所有进行中计划的（用户打卡天数合计 ÷ 计划总天数合计）× 100；无进行中计划时为 0。
+3. **宽松打卡是否计入圈子统计**：需求明确计入个人总时长/打卡天数；圈子维度统计暂不纳入宽松记录（`circle_id` 仅为记录归属，本轮圈子统计接口未改造）。若后续要按圈子聚合需再加接口。
+4. **`/checkin/records/{planId}` 是否保留**：保留（历史兼容），新增 `/checkin/records/mine` 替代前端原先 `/checkin/records/0` 的用法。Spring 对字面量 `mine` 优先于 `{planId}` 匹配，但需回归验证。
+5. **设置入口**：P1，仅入口 + 简单占位页，不实现具体设置项。
+6. **卡片邀请码**：产品评审标记"已满足"，但代码核查显示 `CircleCard` 非 compact 时**仍显示邀请码**（index 首页 / circle 列表页均未传 compact）——与需求五矛盾，本轮在 T04 修正为默认不显示（详情页头部展示）。
+
+---
 
 ## Part B: Task Decomposition
 
 ### 6. Required Packages
 
+本轮**不新增**第三方依赖（前端沿用 Taro 3 + React；后端沿用 Spring Boot/MyBatis-Plus/Lombok）：
 ```
-# Maven依赖（pom.xml）
-- spring-boot-starter-web: Spring Boot Web启动器
-- spring-boot-starter-security: Spring Security安全框架
-- spring-boot-starter-data-jpa: JPA数据访问
-- mybatis-plus-boot-starter: MyBatis-Plus ORM框架
-- mysql-connector-java: MySQL数据库驱动
-- lombok: Lombok代码简化
-- hutool-all: Hutool工具库
-- weixin-java-miniapp: 微信小程序SDK
-- jjwt: JWT令牌处理
-- spring-boot-starter-validation: 数据校验
-- spring-boot-starter-test: 测试支持
-- spring-boot-starter-log4j2: 日志框架
+（无新增）
 ```
 
-### 7. Task List (ordered by dependency)
+### 7. Task List（有序，按依赖）
 
-#### T01: 项目基础设施搭建
-**Task ID**: T01  
-**Task Name**: 项目基础设施搭建  
-**Source Files**: 
-- `pom.xml`
-- `src/main/java/com/fitness/checkin/Application.java`
-- `src/main/resources/application.yml`
-- `src/main/resources/application-dev.yml`
-- `src/main/resources/application-prod.yml`
-- `src/main/resources/logback-spring.xml`
+#### T01 共享数据契约统一（前端 types + constants + services）— P0
+- **Source Files**：`src/types/index.ts`、`src/types/constants.ts`、`src/services/CheckinService.ts`、`src/services/CircleService.ts`、`src/services/PlanService.ts`、`src/services/UserService.ts`
+- **Dependencies**：无
+- **内容**：
+  - types 全部驼峰化：`User.userId/avatarUrl/createdAt`、`Circle.circleId/creatorId/maxMembers/inviteCode/createdAt`（status 改 `0|1`）、`CircleMember.id/circleId/userId/joinedAt`（role 改 number）、`Plan.planId/circleId/startDate/endDate/totalDurationGoal/dailyDurationGoal/circleTotalGoal/minDurationPerCheckin`、`CheckinRecord.recordId/planId?/circleId?/userId/exerciseType/photoUrl/remark/checkinTime`。
+  - 请求类型：`CreateCircleRequest.maxMembers`、`JoinCircleRequest.inviteCode`、`CreatePlanRequest` 全驼峰、`CreateCheckinRequest.planId?/circleId?/remark`。
+  - `UserExerciseStats` 对齐 `/stats/mine`：`todayDuration/totalDuration/checkinDays/totalCheckins/currentStreak/completionRate`。
+  - `PaginatedResult` 对齐后端 `{records,total,page,size}`。
+  - constants：新增 `STORAGE_KEYS.LAST_EXERCISE_TYPE`、`DURATION_QUICK_OPTIONS=[15,30,45,60]`、`MAX_DURATION=480`（CHECKIN_RULES 更新）、`isCircleActive`/`isCreatorRole` 助手。
+  - Services：`CheckinService.createCheckin`（驼峰+remark+可选 planId/circleId）、`getMyStats→/checkin/stats/mine`、`getMyCheckins→/checkin/records/mine?page=&size=&planId=`、upload 返回 `{url}`；`CircleService.archiveCircle/restoreCircle`；`UserService.login` 返回类型修正为扁平 Map。
+- **验收**：`npx tsc --noEmit` 通过（或 `taro build` 类型检查段通过）。
 
-**Dependencies**: 无  
-**Priority**: P0
+#### T02 后端宽松打卡 + 用户维度统计/记录 — P0
+- **Source Files**：`dto/CheckinRequest.java`、`entity/CheckinRecord.java`、`mapper/CheckinRecordMapper.java`、`service/CheckinService.java`、`service/impl/CheckinServiceImpl.java`、`controller/CheckinController.java`、`sql/init.sql`
+- **Dependencies**：无（可与 T01/T03 并行）
+- **内容**：
+  - `CheckinRequest`：`planId` 去 `@NotNull`（可空）；`duration` 加 `@Max(480)`（全局 1-480）；新增 `circleId`（可空，Service 校验成员）。
+  - `CheckinRecord`：新增 `private Long circleId;`。
+  - `CheckinServiceImpl.checkin`：时长全局校验 1-480；`planId!=null` 时走原计划校验（存在/进行中/成员/`duration>=minDurationPerCheckin`）+ 校验计划所属圈子未归档；`planId==null` 时跳过计划校验（宽松打卡）；`circleId!=null` 时校验是成员；`planId!=null && circleId==null` 时默认记 plan 所属圈子。
+  - Mapper 新增：`selectTodayDurationByUserId`、`selectTotalDurationByUserId`、`selectCheckinDaysByUserId`、`selectTotalCheckinsByUserId`、`selectDistinctCheckinDatesByUserId`（连续打卡 Java 计算）。
+  - 新增 `getUserCheckinStatsMine(userId)`：`{todayDuration,totalDuration,checkinDays,totalCheckins,currentStreak,completionRate}`（completionRate 仅进行中计划）。
+  - 新增 `getUserCheckinRecordsMine(userId, planId?, exerciseType?, startDate?, endDate?, page, size)`：QueryWrapper 组合筛选 + 分页。
+  - `CheckinController`：新增 `GET /checkin/stats/mine`、`GET /checkin/records/mine`；`POST /checkin` 传 circleId；**修复 `buildPageResult` 的 total 用 `page.getTotal()` 而非 `records.size()`**。
+  - SQL：见下方 ALTER。
+- **SQL 变更（生产执行 + init.sql 同步）**：
+```sql
+ALTER TABLE checkin_records ADD COLUMN circle_id BIGINT NULL COMMENT '圈子ID（可空，宽松打卡）' AFTER plan_id;
+ALTER TABLE checkin_records ADD INDEX idx_circle_id (circle_id);
+ALTER TABLE checkin_records MODIFY COLUMN plan_id BIGINT NULL COMMENT '计划ID（可空，宽松打卡）';
+```
 
-**Description**: 创建Spring Boot项目基础结构，配置Maven依赖，设置多环境配置文件，配置日志系统。
+#### T03 后端圈子归档/恢复 + 归档约束 — P0
+- **Source Files**：`controller/CircleController.java`、`service/CircleService.java`、`service/impl/CircleServiceImpl.java`、`service/impl/PlanServiceImpl.java`
+- **Dependencies**：无（可与 T01/T02 并行）
+- **内容**：
+  - `POST /circles/{id}/archive`、`POST /circles/{id}/restore`：仅创建者（`creatorId == userId`，或成员 role==2），404/403 语义清晰。
+  - `archiveCircle`：status 1→0；`restoreCircle`：status 0→1。
+  - `joinCircle`：status!=1 时文案改为"圈子已归档"（功能不变）。
+  - `PlanServiceImpl.createPlan`：校验 `circle.status==1`，否则抛"圈子已归档，无法创建计划"。
 
-#### T02: 数据库设计与实体层
-**Task ID**: T02  
-**Task Name**: 数据库设计与实体层  
-**Source Files**:
-- `sql/init.sql`
-- `src/main/java/com/fitness/checkin/entity/User.java`
-- `src/main/java/com/fitness/checkin/entity/Circle.java`
-- `src/main/java/com/fitness/checkin/entity/CircleMember.java`
-- `src/main/java/com/fitness/checkin/entity/Plan.java`
-- `src/main/java/com/fitness/checkin/entity/CheckinRecord.java`
-- `src/main/java/com/fitness/checkin/mapper/*.java`
-- `src/main/resources/mapper/*.xml`
+#### T04 前端"我的"精简 + 圈子详情状态/归档 + 设置占位 — P0
+- **Source Files**：`src/pages/profile/profile.tsx`、`src/pages/profile/profile.scss`、`src/pages/profile/settings/settings.tsx/.scss/.config.ts`、`src/pages/circle/detail/detail.tsx`、`src/pages/circle/detail/detail.scss`、`src/components/circle/CircleCard.tsx`、`src/components/circle/CircleCard.scss`
+- **Dependencies**：T01
+- **内容**：
+  - profile.tsx：删除运动数据 4 宫格、我的圈子、创建圈子、加入圈子；保留用户信息卡、运动历史、退出登录；新增设置占位入口（toast"功能开发中"或跳 settings 占位页）。
+  - circle/detail.tsx：头部状态标签（`isCircleActive(circle.status)` → 绿点"进行中"/灰点"已归档"）；已归档时顶部提示条 + 隐藏"创建计划/今日打卡"按钮；设置区仅创建者显示"归档/恢复"（`Taro.showModal` 二次确认）；邀请码头部展示（`inviteCode`）+ 复制。
+  - CircleCard.tsx：字段驼峰；**邀请码默认不显示**（修正需求五——首页/列表卡片不显示邀请码，邀请码仅详情页头部展示）。
+- **验收**：我的页无圈子/统计区；圈子详情状态正确、归档后按钮隐藏、创建者可归档/恢复。
 
-**Dependencies**: T01  
-**Priority**: P0
+#### T05 宽松打卡面板 + 全量访问点修复 + 集成编译 — P0
+- **Source Files**：`src/components/checkin/LooseCheckinPanel.tsx/.scss`、`src/pages/index/index.tsx`、`src/pages/circle/detail/detail.tsx`（面板接入）、`src/pages/checkin/checkin.tsx`、`src/pages/profile/history/history.tsx`、`src/pages/circle/circle.tsx`、`src/pages/circle/create/create.tsx`、`src/pages/circle/join/join.tsx`、`src/pages/plan/detail/detail.tsx`、`src/context/UserContext.tsx`、`src/context/CircleContext.tsx`、`src/context/PlanContext.tsx`、`src/components/checkin/CheckinButton.tsx`、`src/components/checkin/CheckinCard.tsx`、`src/components/circle/MemberAvatarList.tsx`、`src/components/plan/PlanProgressCard.tsx`
+- **Dependencies**：T01、T04（T02/T03 为端到端前置，非编译阻塞）
+- **内容**：
+  - `LooseCheckinPanel`：半屏底部面板（遮罩 + 上滑动画）；运动类型宫格（默认记 `lastExerciseType`）→ 时长快速档 15/30/45/60 + 手动 Input 1-480（必填）→ 可选关联圈子（`getMyCircles`，默认 `lastCircleId`）→ 可选照片/备注 → 完成打卡 → toast 成功 + 面板内结果摘要（本次时长/类型/今日累计 `getMyStats`）→ 1.5s 后 `onSuccess()` 收起刷新。
+  - 首页 `CheckinButton` 与圈子详情"今日打卡"改为打开面板（有进行中计划时传 `planId`，无计划也可宽松打卡）。
+  - 全量访问点修复：按 §8 映射表将 ~40 处 `_id`/下划线访问改为驼峰（`circle._id→circleId`、`plan._id→planId`、`record._id→recordId`、`member._id→id`、`note→remark`、`uploadRes.data.tempFileURL→data.url` 等）。
+  - `npx taro build --type weapp` 编译通过（后台运行，勿阻塞）。
+- **验收**：首页无计划也可打卡；打卡后面板显示今日累计并自动收起刷新；全站无 undefined 字段（grep 复核无 `._id`/`.circle_id` 等残留）。
 
-**Description**: 设计MySQL数据库表结构，创建SQL初始化脚本，实现MyBatis实体类和Mapper接口。
+---
 
-#### T03: 核心业务逻辑实现
-**Task ID**: T03  
-**Task Name**: 核心业务逻辑实现  
-**Source Files**:
-- `src/main/java/com/fitness/checkin/service/AuthService.java`
-- `src/main/java/com/fitness/checkin/service/CircleService.java`
-- `src/main/java/com/fitness/checkin/service/PlanService.java`
-- `src/main/java/com/fitness/checkin/service/CheckinService.java`
-- `src/main/java/com/fitness/checkin/service/FileService.java`
-- `src/main/java/com/fitness/checkin/service/impl/*.java`
-- `src/main/java/com/fitness/checkin/dto/*.java`
-- `src/main/java/com/fitness/checkin/common/*.java`
+### 8. Shared Knowledge（跨任务约定）
 
-**Dependencies**: T02  
-**Priority**: P0
-
-**Description**: 实现核心业务逻辑，包括认证、圈子管理、计划管理、打卡、文件上传等服务。定义数据传输对象和通用异常处理。
-
-#### T04: RESTful API接口实现
-**Task ID**: T04  
-**Task Name**: RESTful API接口实现  
-**Source Files**:
-- `src/main/java/com/fitness/checkin/controller/AuthController.java`
-- `src/main/java/com/fitness/checkin/controller/CircleController.java`
-- `src/main/java/com/fitness/checkin/controller/PlanController.java`
-- `src/main/java/com/fitness/checkin/controller/CheckinController.java`
-- `src/main/java/com/fitness/checkin/controller/FileController.java`
-- `src/main/java/com/fitness/checkin/config/SecurityConfig.java`
-- `src/main/java/com/fitness/checkin/config/WebConfig.java`
-
-**Dependencies**: T03  
-**Priority**: P0
-
-**Description**: 实现RESTful API接口，配置Spring Security安全策略，设置跨域和请求过滤。
-
-#### T05: 定时任务与部署配置
-**Task ID**: T05  
-**Task Name**: 定时任务与部署配置  
-**Source Files**:
-- `src/main/java/com/fitness/checkin/task/DailySummaryTask.java`
-- `src/main/java/com/fitness/checkin/task/PlanEndReminderTask.java`
-- `src/main/java/com/fitness/checkin/service/NotifyService.java`
-- `src/main/java/com/fitness/checkin/service/impl/NotifyServiceImpl.java`
-- `nginx/fitness-checkin.conf`
-- `deploy/deploy.sh`
-- `deploy/fitness-checkin.service`
-
-**Dependencies**: T04  
-**Priority**: P1
-
-**Description**: 实现定时任务（每日汇总推送和周期结束提醒），配置Nginx反向代理和HTTPS，创建systemd服务文件和部署脚本。
-
-### 8. Shared Knowledge
-
-1. **统一响应格式**：所有API响应使用 `{code, data, message}` 格式
-   ```json
-   {
-     "code": 200,
-     "data": { ... },
-     "message": "success"
-   }
-   ```
-
-2. **认证方式**：使用JWT令牌认证，请求头格式为 `Authorization: Bearer <token>`
-
-3. **日期格式**：所有日期时间存储为UTC时间，API返回格式为ISO 8601（如：2024-01-01T00:00:00Z）
-
-4. **文件存储路径**：运动照片存储在 `/data/fitness-checkin/uploads/` 目录下，按年月日分目录
-
-5. **微信登录流程**：小程序获取code → 后端用code换取openid → 生成JWT token
-
-6. **圈子邀请码**：6位随机字符串，包含大写字母和数字
-
-7. **计划状态流转**：未开始(0) → 进行中(1) → 已结束(2)
-
-8. **打卡时长限制**：每次打卡最低10分钟，最高24小时（1440分钟）
+- **字段命名**：线上 JSON 一律驼峰（后端实体与 Map 均如此）；前端 types 与访问点全部驼峰。禁止再出现 `_id`/`circle_id` 等下划线访问。
+- **圈子状态**：`status` 数字线上传输，`1=活跃`、`0=已归档`；前端用 `isCircleActive(status)`。
+- **成员角色**：`role` 数字，`0=普通`、`1=管理员`、`2=创建者`；创建者判断 `isCreatorRole(role)` 或 `circle.creatorId === user.userId`。
+- **打卡**：`POST /checkin` 的 `planId`/`circleId` 均可空（宽松打卡不传 planId，**传 null/省略，禁止传空字符串**，否则 Jackson Long 反序列化 400）；`duration` 全局 1-480。
+- **API 响应**：统一 `{code, data, message}`，成功 `code===200`。
+- **分页**：`GET /checkin/records/mine?page=&size=` 返回 `{records,total,page,size}`，`total` 用数据库总数。
+- **时间**：后端 `yyyy-MM-dd HH:mm:ss`（Asia/Shanghai），前端 `new Date(str.replace(' ','T'))` 兼容解析。
+- **基建**：前端 baseURL `http://124.222.95.76/api`；编译 `npx taro build --type weapp`（后台运行）；后端 `mvn clean package -DskipTests` + `systemctl restart fitness-checkin`；MySQL `fitness_user/Fitness@2026`。
+- **勿回退**：`code===200` 判断、`/checkin` 单数路径、统计字段驼峰、tabbar 图标 `src/assets/tabbar/`、邀请码 8 位校验。
 
 ### 9. Task Dependency Graph
 
 ```mermaid
-graph TD
-    T01[项目基础设施搭建] --> T02[数据库设计与实体层]
-    T02 --> T03[核心业务逻辑实现]
-    T03 --> T04[RESTful API接口实现]
-    T04 --> T05[定时任务与部署配置]
-    
-    T01 -.-> T01
-    T02 -.-> T02
-    T03 -.-> T03
-    T04 -.-> T04
-    T05 -.-> T05
+graph LR
+    T01[T01 数据契约统一<br/>types+constants+services] --> T04[T04 我的页精简+圈子详情归档]
+    T01 --> T05[T05 宽松打卡面板+访问点修复+集成]
+    T04 --> T05
+    T02[T02 后端宽松打卡+stats/records mine] -.E2E.-> T05
+    T03[T03 后端圈子归档/恢复] -.E2E.-> T05
 ```
-
-### 10. 部署指南
-
-#### 10.1 服务器环境要求
-- 操作系统：CentOS 7+ / Ubuntu 20.04+
-- Java版本：JDK 17+
-- MySQL版本：8.0+
-- Nginx版本：1.18+
-- 内存：至少2GB
-- 磁盘：至少50GB
-
-#### 10.2 部署步骤
-1. **安装Java环境**
-   ```bash
-   # CentOS
-   sudo yum install java-17-openjdk-devel
-   # Ubuntu
-   sudo apt install openjdk-17-jdk
-   ```
-
-2. **安装MySQL**
-   ```bash
-   # CentOS
-   sudo yum install mysql-server
-   # Ubuntu
-   sudo apt install mysql-server
-   ```
-
-3. **创建数据库和用户**
-   ```sql
-   CREATE DATABASE fitness_checkin;
-   CREATE USER 'fitness'@'localhost' IDENTIFIED BY 'password';
-   GRANT ALL PRIVILEGES ON fitness_checkin.* TO 'fitness'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-
-4. **执行SQL初始化脚本**
-   ```bash
-   mysql -u fitness -p fitness_checkin < sql/init.sql
-   ```
-
-5. **部署Spring Boot应用**
-   ```bash
-   # 打包应用
-   mvn clean package -DskipTests
-   
-   # 创建部署目录
-   sudo mkdir -p /opt/fitness-checkin
-   sudo cp target/fitness-checkin-*.jar /opt/fitness-checkin/app.jar
-   
-   # 创建systemd服务文件
-   sudo cp deploy/fitness-checkin.service /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl enable fitness-checkin
-   sudo systemctl start fitness-checkin
-   ```
-
-6. **配置Nginx**
-   ```bash
-   # 安装Nginx
-   sudo yum install nginx  # CentOS
-   sudo apt install nginx  # Ubuntu
-   
-   # 复制配置文件
-   sudo cp nginx/fitness-checkin.conf /etc/nginx/conf.d/
-   
-   # 创建SSL证书（Let's Encrypt）
-   sudo yum install certbot python3-certbot-nginx
-   sudo certbot --nginx -d yourdomain.com
-   
-   # 重启Nginx
-   sudo systemctl restart nginx
-   ```
-
-7. **创建文件存储目录**
-   ```bash
-   sudo mkdir -p /data/fitness-checkin/uploads
-   sudo chown -R fitness:fitness /data/fitness-checkin
-   ```
-
-#### 10.3 Nginx配置示例
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name yourdomain.com;
-    
-    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
-    
-    # API代理
-    location /api/ {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    
-    # 静态文件服务（运动照片）
-    location /uploads/ {
-        alias /data/fitness-checkin/uploads/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # 其他配置...
-}
-```
-
-#### 10.4 systemd服务配置
-```ini
-[Unit]
-Description=Fitness Checkin Backend Service
-After=syslog.target network.target
-
-[Service]
-User=fitness
-Group=fitness
-ExecStart=/usr/bin/java -jar /opt/fitness-checkin/app.jar --spring.profiles.active=prod
-SuccessExitStatus=143
-Restart=always
-RestartSec=10
-Environment="SPRING_PROFILES_ACTIVE=prod"
-Environment="JAVA_OPTS=-Xms512m -Xmx1024m"
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### 11. API接口文档摘要
-
-#### 认证相关
-- `POST /api/auth/login` - 微信登录
-- `GET /api/auth/userinfo` - 获取用户信息
-
-#### 圈子相关
-- `POST /api/circles` - 创建圈子
-- `POST /api/circles/join` - 加入圈子
-- `GET /api/circles/{id}` - 获取圈子详情
-- `GET /api/circles/{id}/members` - 获取圈子成员
-- `GET /api/users/{id}/circles` - 获取用户圈子列表
-
-#### 计划相关
-- `POST /api/plans` - 创建计划
-- `POST /api/plans/{id}/start` - 启动计划
-- `GET /api/plans/{id}` - 获取计划详情
-- `GET /api/circles/{id}/plans` - 获取圈子计划列表
-
-#### 打卡相关
-- `POST /api/checkins` - 打卡
-- `GET /api/checkins` - 获取打卡记录
-- `GET /api/plans/{id}/statistics` - 获取计划统计
-
-#### 文件相关
-- `POST /api/files/upload` - 上传文件
-- `GET /api/files/{filename}` - 获取文件
-
-### 12. 定时任务设计
-
-#### 每日汇总推送（每天20:00执行）
-1. 查询所有进行中的计划
-2. 对于每个计划，查询今日打卡记录
-3. 计算今日完成情况（总时长、人均时长）
-4. 调用微信订阅消息接口发送汇总通知
-
-#### 周期结束提醒（每天检查）
-1. 查询即将结束的计划（结束日期在2天内）
-2. 对于每个计划，查询成员完成情况
-3. 对于未完成目标的成员，发送提醒通知
-
-### 13. 文件存储方案
-
-1. **存储路径**：`/data/fitness-checkin/uploads/`
-2. **目录结构**：
-   ```
-   /data/fitness-checkin/uploads/
-   ├── 2024/
-   │   ├── 01/
-   │   │   ├── 01/
-   │   │   │   ├── abc123.jpg
-   │   │   │   └── def456.jpg
-   │   │   └── 02/
-   │   └── 02/
-   └── ...
-   ```
-3. **访问方式**：通过Nginx静态文件服务，URL格式为 `/uploads/2024/01/01/abc123.jpg`
-4. **文件命名**：使用UUID生成唯一文件名，保留原始扩展名
-5. **文件大小限制**：单个文件最大10MB
-6. **支持格式**：JPG、PNG、GIF
-
-### 14. 安全考虑
-
-1. **HTTPS强制**：所有API请求必须通过HTTPS
-2. **JWT安全**：token有效期24小时，使用RS256算法签名
-3. **参数校验**：所有请求参数进行严格校验
-4. **SQL注入防护**：使用MyBatis-Plus参数化查询
-5. **XSS防护**：输出时进行HTML转义
-6. **文件上传安全**：检查文件类型和大小，防止恶意文件上传
-7. **权限控制**：验证用户对圈子/计划的操作权限
-8. **日志记录**：记录关键操作日志，便于审计
 
 ---
 
-**文档版本**: 1.0  
-**最后更新**: 2024年1月  
-**维护者**: 架构师高见远 (Gao)
+## 附：风险与注意事项
+
+1. **方案A陷阱**：若有人改回"全局 SNAKE_CASE"，Map key 不受影响，会制造混合命名灾难；设计已锁定方案C，勿改。
+2. **访问点修复量大**：~40 处跨 16 个文件，遗漏会白屏/undefined；T05 完成后必须全局 grep `\._id|\.circle_id|\.invite_code|\.max_members|\.created_at|\.creator_id|\.user_id|\.plan_id|\.checkin_time|\.exercise_type|\.photo_url|\.avatar_url|\.note\b|\.start_date|\.end_date|\.total_duration_goal|\.daily_duration_goal|\.min_duration_per_checkin|\.member_count` 复核为 0。
+3. **路由冲突**：`/checkin/records/mine` 与 `/checkin/records/{planId}` —— Spring 字面量优先，但需回归；若异常可改名 `/checkin/my-records` 规避（已在 T02 预留）。
+4. **空串 planId**：前端宽松打卡必须省略/传 null planId，禁止 `''`（Jackson 对 `Long` 空串反序列化失败）。
+5. **生产 DB 迁移**：先备份；ALTER 低峰执行；旧记录 `plan_id` 不变、`circle_id=NULL`；`idx_plan_id` 索引对 NULL 不生效但无碍。
+6. **归档语义**：归档后 join 已拦截（status!=1），创建计划/新打卡需 T02/T03 后端双重拦截 + T04/T05 前端隐藏，前后端必须一致，否则会出现"界面隐藏但接口可用"。
+7. **upload 返回字段**：后端 `/files/upload` 返回 `data.url`，前端原先读 `tempFileURL`（bug），本轮统一为 `data.url`。
+8. **登录存储**：`userInfo` 存的是登录扁平 Map（含 token/userId/nickname/avatarUrl），驼峰化后 `user.avatarUrl` 可用；注意它不含 createdAt/updatedAt，属部分 User 对象，勿强依赖。

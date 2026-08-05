@@ -8,7 +8,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner'
 import './checkin.scss'
 
 /**
- * 打卡页面
+ * 打卡页面（保留兼容旧入口，宽松打卡：planId 可空）
  */
 const Checkin = () => {
   const router = useRouter()
@@ -18,7 +18,7 @@ const Checkin = () => {
   const [exerciseType, setExerciseType] = useState<ExerciseType | string>(ExerciseType.RUNNING)
   const [photoPath, setPhotoPath] = useState<string>('')
   const [photoUrl, setPhotoUrl] = useState<string>('')
-  const [note, setNote] = useState<string>('')
+  const [remark, setRemark] = useState<string>('')
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
@@ -92,11 +92,6 @@ const Checkin = () => {
    * 验证表单
    */
   const validateForm = (): boolean => {
-    if (!planId) {
-      showToast({ title: '计划ID无效', icon: 'none' })
-      return false
-    }
-
     if (duration < CHECKIN_RULES.MIN_DURATION) {
       showToast({
         title: `打卡时长不能少于${CHECKIN_RULES.MIN_DURATION}分钟`,
@@ -131,7 +126,7 @@ const Checkin = () => {
         showToast({ title: '上传照片中...', icon: 'loading', duration: 10000 })
         const uploadRes = await CheckinService.uploadPhoto(photoPath)
         if (uploadRes.code === 200) {
-          finalPhotoUrl = uploadRes.data.tempFileURL
+          finalPhotoUrl = uploadRes.data.url
           setPhotoUrl(finalPhotoUrl)
         } else {
           throw new Error('照片上传失败')
@@ -139,13 +134,15 @@ const Checkin = () => {
         Taro.hideToast()
       }
 
-      // 创建打卡记录
+      // 创建打卡记录（planId 为空时省略，禁止传空字符串）
+      const finalPlanId = planId && planId.trim() !== '' ? planId : undefined
+
       const result = await CheckinService.createCheckin({
-        plan_id: planId,
+        planId: finalPlanId,
         duration,
-        exercise_type: exerciseType,
-        photo_url: finalPhotoUrl,
-        note: note.trim()
+        exerciseType,
+        ...(finalPhotoUrl ? { photoUrl: finalPhotoUrl } : {}),
+        ...(remark.trim() ? { remark: remark.trim() } : {})
       })
 
       if (result.code === 200) {
@@ -170,13 +167,6 @@ const Checkin = () => {
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  /**
-   * 获取运动类型配置
-   */
-  const getExerciseConfig = (type: string) => {
-    return EXERCISE_TYPE_CONFIG[type] || EXERCISE_TYPE_CONFIG.other
   }
 
   // 提交中状态
@@ -259,8 +249,8 @@ const Checkin = () => {
         <Input
           className='note-input'
           placeholder='记录今天的运动感受...'
-          value={note}
-          onInput={(e) => setNote(e.detail.value)}
+          value={remark}
+          onInput={(e) => setRemark(e.detail.value)}
           maxlength={200}
           type='text'
         />

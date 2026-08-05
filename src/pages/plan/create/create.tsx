@@ -79,15 +79,15 @@ const CreatePlan = () => {
       setIsLoading(true)
 
       const result = await PlanService.createPlan({
-        circle_id: circleId,
+        circleId: circleId,
         name: name.trim(),
         description: description.trim(),
-        start_date: startDate,
-        end_date: getEndDate(),
-        total_duration_goal: totalDurationGoal,
-        daily_duration_goal: dailyDurationGoal,
-        circle_total_goal: totalDurationGoal * 2, // 圈子总目标为个人目标的2倍
-        min_duration_per_checkin: minDurationPerCheckin
+        startDate: startDate,
+        endDate: getEndDate(),
+        totalDurationGoal: totalDurationGoal,
+        dailyDurationGoal: dailyDurationGoal,
+        circleTotalGoal: totalDurationGoal * 2, // 圈子总目标为个人目标的2倍
+        minDurationPerCheckin: minDurationPerCheckin
       })
 
       if (result.code === 200) {

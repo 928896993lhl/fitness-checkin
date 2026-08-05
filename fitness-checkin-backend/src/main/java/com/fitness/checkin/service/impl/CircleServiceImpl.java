@@ -91,7 +91,7 @@ public class CircleServiceImpl implements CircleService {
 
         // 检查圈子状态
         if (circle.getStatus() != 1) {
-            throw BusinessException.badRequest("圈子已禁用");
+            throw BusinessException.badRequest("圈子已归档");
         }
 
         // 检查用户是否已经是成员
@@ -213,6 +213,44 @@ public class CircleServiceImpl implements CircleService {
             throw BusinessException.notFound("圈子不存在");
         }
         return circle;
+    }
+
+    @Override
+    public void archiveCircle(Long circleId, Long userId) {
+        Circle circle = getCircleById(circleId);
+
+        // 仅创建者可归档
+        if (!circle.getCreatorId().equals(userId)) {
+            throw BusinessException.forbidden("只有创建者可以归档圈子");
+        }
+
+        if (circle.getStatus() == 0) {
+            throw BusinessException.badRequest("圈子已归档");
+        }
+
+        circle.setStatus(0); // 0-已归档
+        circle.setUpdatedAt(LocalDateTime.now());
+        circleMapper.updateById(circle);
+        logger.info("圈子 {} 已归档，操作人 {}", circleId, userId);
+    }
+
+    @Override
+    public void restoreCircle(Long circleId, Long userId) {
+        Circle circle = getCircleById(circleId);
+
+        // 仅创建者可恢复
+        if (!circle.getCreatorId().equals(userId)) {
+            throw BusinessException.forbidden("只有创建者可以恢复圈子");
+        }
+
+        if (circle.getStatus() == 1) {
+            throw BusinessException.badRequest("圈子已是活跃状态");
+        }
+
+        circle.setStatus(1); // 1-活跃
+        circle.setUpdatedAt(LocalDateTime.now());
+        circleMapper.updateById(circle);
+        logger.info("圈子 {} 已恢复，操作人 {}", circleId, userId);
     }
 
     /**

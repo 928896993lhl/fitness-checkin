@@ -17,7 +17,17 @@ export class PlanService {
   }
 
   static async getPlansByCircle(circleId: string, params: GetPlansRequest = {}): Promise<APIResponse<PaginatedResult<Plan>>> {
-    return request(`/plans/circle/${circleId}`)
+    const query: Record<string, any> = {}
+    if (params.status !== undefined) {
+      query.status = params.status
+    }
+    if (params.page !== undefined) {
+      query.page = params.page
+    }
+    if (params.pageSize !== undefined) {
+      query.size = params.pageSize
+    }
+    return request(`/plans/circle/${circleId}`, 'GET', query)
   }
 
   static async getPlanDetail(planId: string): Promise<APIResponse<Plan>> {
@@ -32,7 +42,7 @@ export class PlanService {
     return request(`/plans/${planId}/start`, 'POST')
   }
 
-  static async updatePlanStatus(planId: string, status: string): Promise<APIResponse<null>> {
+  static async updatePlanStatus(planId: string, status: number): Promise<APIResponse<null>> {
     return request(`/plans/${planId}/start`, 'POST')
   }
 

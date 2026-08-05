@@ -1,24 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useUserState, useUserDispatch } from '../../context/UserContext'
-import { CircleService } from '../../services/CircleService'
-import { CheckinService } from '../../services/CheckinService'
-import { Circle, UserExerciseStats } from '../../types'
-import CircleCard from '../../components/circle/CircleCard'
-import StatsCard from '../../components/common/StatsCard'
-import EmptyState from '../../components/common/EmptyState'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import './profile.scss'
 
 /**
- * 个人中心页面
+ * 个人中心页面（精简版）
+ * 保留用户信息卡、运动历史入口、设置入口、退出登录
  */
 const Profile = () => {
   const { user, isLoggedIn } = useUserState()
   const { logout } = useUserDispatch()
-  const [circles, setCircles] = useState<Circle[]>([])
-  const [stats, setStats] = useState<UserExerciseStats | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
   /**
@@ -29,28 +22,7 @@ const Profile = () => {
       setIsLoading(false)
       return
     }
-
-    try {
-      setIsLoading(true)
-
-      const [circlesRes, statsRes] = await Promise.allSettled([
-        CircleService.getMyCircles(),
-        CheckinService.getUserStats()
-      ])
-
-      if (circlesRes.status === 'fulfilled' && circlesRes.value.code === 200) {
-        const rawData = circlesRes.value.data || []
-        setCircles(Array.isArray(rawData) ? rawData : (rawData.records || []))
-      }
-
-      if (statsRes.status === 'fulfilled' && statsRes.value.code === 200) {
-        setStats(statsRes.value.data)
-      }
-    } catch (error) {
-      console.error('加载个人中心数据失败:', error)
-    } finally {
-      setIsLoading(false)
-    }
+    setIsLoading(false)
   }
 
   /**
@@ -70,20 +42,20 @@ const Profile = () => {
   }
 
   /**
-   * 跳转到圈子详情
-   */
-  const navigateToCircle = (circle: Circle) => {
-    Taro.navigateTo({
-      url: `/pages/circle/detail/detail?circleId=${circle.circle_id || circle._id}`
-    })
-  }
-
-  /**
    * 跳转到历史记录
    */
   const navigateToHistory = () => {
     Taro.navigateTo({
       url: '/pages/profile/history/history'
+    })
+  }
+
+  /**
+   * 跳转到设置页
+   */
+  const navigateToSettings = () => {
+    Taro.navigateTo({
+      url: '/pages/profile/settings/settings'
     })
   }
 
@@ -104,16 +76,6 @@ const Profile = () => {
         }
       }
     })
-  }
-
-  /**
-   * 格式化时长
-   */
-  const formatDuration = (minutes: number): string => {
-    if (minutes < 60) return `${minutes}分钟`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`
   }
 
   // 未登录状态
@@ -152,8 +114,8 @@ const Profile = () => {
       <View className='user-card'>
         <View className='user-header'>
           <View className='user-avatar'>
-            {user?.avatar_url ? (
-              <Image className='avatar-image' src={user.avatar_url} mode='aspectFill' />
+            {user?.avatarUrl ? (
+              <Image className='avatar-image' src={user.avatarUrl} mode='aspectFill' />
             ) : (
               <View className='avatar-placeholder'>
                 <Text className='avatar-text'>{user?.nickname?.charAt(0) || '健'}</Text>
@@ -167,67 +129,6 @@ const Profile = () => {
         </View>
       </View>
 
-      {/* 运动统计 */}
-      {stats && (
-        <View className='stats-section'>
-          <Text className='section-title'>运动数据</Text>
-          <View className='stats-grid'>
-            <StatsCard
-              title='累计运动'
-              value={formatDuration(stats.totalDuration || 0)}
-              icon='🏆'
-              color='#f59e0b'
-            />
-            <StatsCard
-              title='打卡天数'
-              value={`${stats.checkinDays || 0}天`}
-              icon='📸'
-              color='#10b981'
-            />
-            <StatsCard
-              title='计划进度'
-              value={`${stats.passedDays || 0}天`}
-              icon='🔥'
-              color='#ef4444'
-            />
-            <StatsCard
-              title='完成率'
-              value={`${Math.round(stats.completionRate || 0)}%`}
-              icon='⭐'
-              color='#8b5cf6'
-            />
-          </View>
-        </View>
-      )}
-
-      {/* 我的圈子 */}
-      <View className='circles-section'>
-        <View className='section-header'>
-          <Text className='section-title'>我的圈子</Text>
-          <Text className='circle-count'>{circles.length}个</Text>
-        </View>
-        
-        {circles.length === 0 ? (
-          <EmptyState
-            icon='👥'
-            title='还没有加入圈子'
-            description='创建或加入一个健身圈子'
-            compact
-          />
-        ) : (
-          <View className='circles-list'>
-            {circles.map(circle => (
-              <CircleCard
-                key={circle._id}
-                circle={circle}
-                onTap={navigateToCircle}
-                compact
-              />
-            ))}
-          </View>
-        )}
-      </View>
-
       {/* 功能菜单 */}
       <View className='menu-section'>
         <View className='menu-item' onClick={navigateToHistory}>
@@ -235,14 +136,9 @@ const Profile = () => {
           <Text className='menu-text'>运动历史</Text>
           <Text className='menu-arrow'>›</Text>
         </View>
-        <View className='menu-item' onClick={() => Taro.navigateTo({ url: '/pages/circle/create/create' })}>
-          <Text className='menu-icon'>➕</Text>
-          <Text className='menu-text'>创建圈子</Text>
-          <Text className='menu-arrow'>›</Text>
-        </View>
-        <View className='menu-item' onClick={() => Taro.navigateTo({ url: '/pages/circle/join/join' })}>
-          <Text className='menu-icon'>🔗</Text>
-          <Text className='menu-text'>加入圈子</Text>
+        <View className='menu-item' onClick={navigateToSettings}>
+          <Text className='menu-icon'>⚙️</Text>
+          <Text className='menu-text'>设置</Text>
           <Text className='menu-arrow'>›</Text>
         </View>
       </View>

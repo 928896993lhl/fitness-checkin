@@ -63,7 +63,7 @@ const CircleList = () => {
    */
   const goToDetail = (circle: Circle) => {
     Taro.navigateTo({
-      url: `/pages/circle/detail/detail?circleId=${circle.circle_id}`
+      url: `/pages/circle/detail/detail?circleId=${circle.circleId}`
     })
   }
 
@@ -137,10 +137,10 @@ const CircleList = () => {
         {circles.length > 0 ? (
           circles.map(circle => (
             <CircleCard
-              key={circle.circle_id}
+              key={circle.circleId}
               circle={circle}
               onTap={goToDetail}
-              member_count={0}
+              memberCount={0}
             />
           ))
         ) : (

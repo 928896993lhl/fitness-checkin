@@ -1,0 +1,46 @@
+.settings-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 60rpx;
+}
+
+.settings-group {
+  background-color: #fff;
+  margin-bottom: 20rpx;
+  border-radius: 0;
+
+  .settings-item {
+    display: flex;
+    align-items: center;
+    padding: 30rpx;
+    border-bottom: 1rpx solid #f3f4f6;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .settings-icon {
+      font-size: 36rpx;
+      margin-right: 20rpx;
+    }
+
+    .settings-text {
+      flex: 1;
+      font-size: 28rpx;
+      color: #333;
+    }
+
+    .settings-arrow {
+      font-size: 36rpx;
+      color: #999;
+    }
+  }
+}
+
+.version-text {
+  display: block;
+  text-align: center;
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 40rpx;
+}

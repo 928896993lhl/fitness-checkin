@@ -1,6 +1,9 @@
 /**
  * 微信小程序健身打卡应用 - 类型定义
  * 定义所有数据实体、API接口、状态管理等类型
+ *
+ * 命名约定：线上 JSON 一律驼峰（后端实体与 Map 均如此）；
+ * 圈子状态 status 用数字 1=活跃 / 0=已归档；成员角色 role 用数字 0=普通 / 1=管理员 / 2=创建者。
  */
 
 // ==================== 基础类型 ====================
@@ -8,7 +11,7 @@
 /** 时间戳类型（ISO 8601 UTC格式） */
 export type Timestamp = string
 
-/** ID类型 */
+/** ID类型（后端 Long 序列化为字符串或数字，统一用 string 承载） */
 export type ID = string
 
 /** API响应格式 */
@@ -30,25 +33,14 @@ export enum ErrorCode {
   NETWORK_ERROR = 5002
 }
 
-/** 用户角色枚举 */
-export enum UserRole {
-  MEMBER = 'member',
-  CREATOR = 'creator'
-}
+/** 用户角色：0=普通成员，1=管理员，2=创建者（数字线上传输） */
+export type UserRole = 0 | 1 | 2
 
-/** 圈子状态枚举 */
-export enum CircleStatus {
-  ACTIVE = 'active',
-  ARCHIVED = 'archived'
-}
+/** 圈子状态：1=活跃，0=已归档/禁用（数字线上传输） */
+export type CircleStatus = 0 | 1
 
-/** 计划状态枚举 */
-export enum PlanStatus {
-  PENDING = 'pending',
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled'
-}
+/** 计划状态：0=未开始，1=进行中，2=已结束（数字线上传输） */
+export type PlanStatus = 0 | 1 | 2
 
 /** 运动类型枚举 */
 export enum ExerciseType {
@@ -65,38 +57,38 @@ export enum ExerciseType {
 
 /** 用户信息 */
 export interface User {
-  _id: ID
+  userId: ID
   openid: string
   nickname: string
-  avatar_url: string
-  gender: number // 0:未知, 1:男, 2:女
-  province: string
-  city: string
-  country: string
-  created_at: Timestamp
-  updated_at: Timestamp
+  avatarUrl: string
+  gender?: number // 0:未知, 1:男, 2:女
+  province?: string
+  city?: string
+  country?: string
+  createdAt?: Timestamp
+  updatedAt?: Timestamp
 }
 
 /** 圈子信息 */
 export interface Circle {
-  _id: ID
+  circleId: ID
   name: string
   description: string
-  creator_id: ID
-  max_members: number // 2-8人
-  invite_code: string
+  creatorId: ID
+  maxMembers: number // 2-8人
+  inviteCode: string
   status: CircleStatus
-  created_at: Timestamp
-  updated_at: Timestamp
+  createdAt: Timestamp
+  updatedAt: Timestamp
 }
 
 /** 圈子成员关系 */
 export interface CircleMember {
-  _id: ID
-  circle_id: ID
-  user_id: ID
+  id: ID
+  circleId: ID
+  userId: ID
   role: UserRole
-  joined_at: Timestamp
+  joinedAt: Timestamp
   // 联合查询字段（非数据库字段）
   user?: User
   circle?: Circle
@@ -104,35 +96,35 @@ export interface CircleMember {
 
 /** 周期计划 */
 export interface Plan {
-  _id: ID
-  circle_id: ID
+  planId: ID
+  circleId: ID
   name: string
   description: string
-  start_date: Timestamp
-  end_date: Timestamp
-  total_duration_goal: number // 总运动时长目标（分钟）
-  daily_duration_goal: number // 每天运动时长目标（分钟）
-  circle_total_goal: number // 圈子总运动时长目标（分钟）
-  min_duration_per_checkin: number // 每次打卡最低时长（默认10分钟）
+  startDate: Timestamp
+  endDate: Timestamp
+  totalDurationGoal: number // 总运动时长目标（分钟）
+  dailyDurationGoal: number // 每天运动时长目标（分钟）
+  circleTotalGoal: number // 圈子总运动时长目标（分钟）
+  minDurationPerCheckin: number // 每次打卡最低时长（默认10分钟）
   status: PlanStatus
-  created_at: Timestamp
-  updated_at: Timestamp
+  createdAt: Timestamp
+  updatedAt: Timestamp
   // 联合查询字段（非数据库字段）
   circle?: Circle
 }
 
-/** 打卡记录 */
+/** 打卡记录（planId/circleId 均可空，宽松打卡不依赖计划） */
 export interface CheckinRecord {
-  _id: ID
-  plan_id: ID
-  user_id: ID
+  recordId: ID
+  planId?: ID | null
+  circleId?: ID | null
+  userId: ID
   duration: number // 运动时长（分钟）
-  exercise_type: ExerciseType | string
-  photo_url: string
-  photo_file_id: string // 云存储文件ID
-  note: string // 打卡备注
-  checkin_time: Timestamp
-  created_at: Timestamp
+  exerciseType: ExerciseType | string
+  photoUrl: string
+  remark: string // 打卡备注
+  checkinTime: Timestamp
+  createdAt: Timestamp
   // 联合查询字段（非数据库字段）
   user?: User
   plan?: Plan
@@ -140,87 +132,94 @@ export interface CheckinRecord {
 
 // ==================== 请求/响应类型 ====================
 
+/** 登录结果（后端 AuthController.wxLogin 返回的扁平 Map） */
+export interface LoginResult {
+  token: string
+  userId: ID
+  openid: string
+  nickname: string
+  avatarUrl: string
+}
+
 /** 创建圈子请求 */
 export interface CreateCircleRequest {
   name: string
   description?: string
-  max_members: number
+  maxMembers: number
 }
 
 /** 加入圈子请求 */
 export interface JoinCircleRequest {
-  invite_code: string
+  inviteCode: string
 }
 
 /** 创建计划请求 */
 export interface CreatePlanRequest {
-  circle_id: ID
+  circleId: ID
   name: string
   description?: string
-  start_date: string
-  end_date: string
-  total_duration_goal: number
-  daily_duration_goal: number
-  circle_total_goal: number
-  min_duration_per_checkin?: number
+  startDate: string
+  endDate: string
+  totalDurationGoal: number
+  dailyDurationGoal: number
+  circleTotalGoal: number
+  minDurationPerCheckin?: number
 }
 
-/** 创建打卡记录请求 */
+/** 创建打卡记录请求（planId/circleId 均可空；宽松打卡省略/传 null，禁止传空字符串） */
 export interface CreateCheckinRequest {
-  plan_id: ID
-  duration: number
-  exercise_type: ExerciseType | string
-  photo_temp_path?: string // 临时文件路径（用于上传）
-  photo_url?: string // 已上传的照片URL
-  note?: string
+  planId?: ID | null
+  circleId?: ID | null
+  duration: number // 全局 1-480 分钟
+  exerciseType: ExerciseType | string
+  photoUrl?: string
+  remark?: string
 }
 
 /** 查询圈子列表请求 */
 export interface GetCirclesRequest {
   page?: number
-  page_size?: number
+  pageSize?: number
   status?: CircleStatus
 }
 
 /** 查询计划列表请求 */
 export interface GetPlansRequest {
-  circle_id?: ID
+  circleId?: ID
   status?: PlanStatus
   page?: number
-  page_size?: number
+  pageSize?: number
 }
 
 /** 查询打卡记录请求 */
 export interface GetCheckinRecordsRequest {
-  plan_id?: ID
-  user_id?: ID
-  start_date?: string
-  duration?: string
+  planId?: ID
+  exerciseType?: string
+  startDate?: string
+  endDate?: string
+  duration?: number
   page?: number
-  page_size?: number
+  pageSize?: number
 }
 
 // ==================== 统计类型 ====================
 
-/** 用户运动统计 */
+/** 用户运动统计（对齐 GET /checkin/stats/mine） */
 export interface UserExerciseStats {
+  todayDuration: number // 今日运动时长（分钟）
   totalDuration: number // 总运动时长（分钟）
-  totalCheckins: number // 总打卡次数
   checkinDays: number // 累计打卡天数
+  totalCheckins: number // 总打卡次数
   currentStreak: number // 当前连续打卡天数
-  maxStreak: number // 最大连续打卡天数
-  passedDays: number // 计划已进行天数
-  completionRate: number // 计划完成率（0-100）
-  thisWeekDuration: number // 本周运动时长
-  thisMonthDuration: number // 本月运动时长
+  completionRate: number // 计划完成率（0-100，仅进行中计划）
 }
 
 /** 圈子运动统计 */
 export interface CircleExerciseStats {
-  circle_id: ID
+  circleId: ID
   totalDuration: number // 圈子总运动时长
   totalCheckins: number // 圈子总打卡次数
-  member_count: number // 成员数量
+  memberCount: number // 成员数量
   activeMemberCount: number // 活跃成员数量（本周打卡）
   averageDuration: number // 人均运动时长
   checkinDays: number // 累计打卡天数
@@ -230,12 +229,12 @@ export interface CircleExerciseStats {
 
 /** 计划进度 */
 export interface PlanProgress {
-  plan_id: ID
-  total_goal: number
-  current_duration: number
-  progress_percentage: number
-  days_remaining: number
-  is_on_track: boolean // 是否按计划进行
+  planId: ID
+  totalGoal: number
+  currentDuration: number
+  progressPercentage: number
+  daysRemaining: number
+  isOnTrack: boolean // 是否按计划进行
 }
 
 // ==================== 状态管理类型 ====================
@@ -252,7 +251,7 @@ export interface UserState {
 /** 圈子状态 */
 export interface CircleState {
   circles: Circle[]
-  current_circle: Circle | null
+  currentCircle: Circle | null
   members: CircleMember[]
   isLoading: boolean
   error: string | null
@@ -261,7 +260,7 @@ export interface CircleState {
 /** 计划状态 */
 export interface PlanState {
   plans: Plan[]
-  current_plan: Plan | null
+  currentPlan: Plan | null
   progress: PlanProgress | null
   isLoading: boolean
   error: string | null
@@ -269,8 +268,8 @@ export interface PlanState {
 
 /** 打卡状态 */
 export interface CheckinState {
-  today_records: CheckinRecord[]
-  total_today_duration: number
+  todayRecords: CheckinRecord[]
+  totalTodayDuration: number
   isLoading: boolean
   isSubmitting: boolean
   error: string | null
@@ -281,15 +280,15 @@ export interface CheckinState {
 /** 圈子卡片组件Props */
 export interface CircleCardProps {
   circle: Circle
-  member_count?: number
-  current_plan?: Plan | null
+  memberCount?: number
+  currentPlan?: Plan | null
   onTap?: (circle: Circle) => void
 }
 
 /** 打卡记录卡片组件Props */
 export interface CheckinCardProps {
   record: CheckinRecord
-  show_user?: boolean
+  showUser?: boolean
   onTap?: (record: CheckinRecord) => void
 }
 
@@ -314,20 +313,31 @@ export interface MemberAvatarListProps {
 /** 分页参数 */
 export interface PaginationParams {
   page: number
-  page_size: number
+  pageSize: number
 }
 
-/** 分页结果 */
+/** 分页结果（对齐后端 {records,total,page,size}） */
 export interface PaginatedResult<T> {
-  list: T[]
+  records: T[]
   total: number
   page: number
-  page_size: number
-  total_pages: number
+  size: number
 }
 
 /** 日期范围 */
 export interface DateRange {
   start: string
   end: string
+}
+
+// ==================== 助手函数 ====================
+
+/** 判断圈子是否活跃（status === 1） */
+export function isCircleActive(status: CircleStatus | number | undefined | null): boolean {
+  return Number(status) === 1
+}
+
+/** 判断成员角色是否为创建者（role === 2） */
+export function isCreatorRole(role: UserRole | number | undefined | null): boolean {
+  return Number(role) === 2
 }

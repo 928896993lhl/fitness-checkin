@@ -59,7 +59,7 @@ const Login = () => {
       const result = await UserService.login({
         code: loginRes.code,
         nickname: userInfo.nickName,
-        avatar_url: userInfo.avatarUrl,
+        avatarUrl: userInfo.avatarUrl,
         gender: userInfo.gender,
         province: userInfo.province,
         city: userInfo.city,

@@ -1,5 +1,5 @@
-import { request, uploadFile } from '../utils/request'
-import { User, APIResponse } from '../types'
+import { request } from '../utils/request'
+import { User, LoginResult, APIResponse } from '../types'
 
 /**
  * 用户服务类
@@ -8,18 +8,19 @@ import { User, APIResponse } from '../types'
 export class UserService {
   /**
    * 用户登录
+   * 后端 AuthController.wxLogin 返回扁平 Map {token, userId, openid, nickname, avatarUrl}
    * @param loginData 登录数据
-   * @returns 登录结果
+   * @returns 登录结果（扁平结构）
    */
   static async login(loginData: {
     code: string
     nickname?: string
-    avatar_url?: string
+    avatarUrl?: string
     gender?: number
     province?: string
     city?: string
     country?: string
-  }): Promise<APIResponse<{ user: User; token: string; isNewUser: boolean }>> {
+  }): Promise<APIResponse<LoginResult>> {
     return request('/auth/login', 'POST', loginData)
   }
 
@@ -38,7 +39,7 @@ export class UserService {
    */
   static async updateUserInfo(userData: {
     nickname?: string
-    avatar_url?: string
+    avatarUrl?: string
     gender?: number
     province?: string
     city?: string

@@ -31,7 +31,10 @@ const CheckinCard: React.FC<CheckinCardProps> = ({
    * 格式化时间
    */
   const formatTime = (date: string): string => {
-    const d = new Date(date)
+    if (!date) return '--:--'
+    const normalized = date.includes('T') ? date : date.replace(' ', 'T')
+    const d = new Date(normalized)
+    if (isNaN(d.getTime())) return '--:--'
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
   }
 
@@ -39,7 +42,10 @@ const CheckinCard: React.FC<CheckinCardProps> = ({
    * 格式化日期
    */
   const formatDate = (date: string): string => {
-    const d = new Date(date)
+    if (!date) return '未知日期'
+    const normalized = date.includes('T') ? date : date.replace(' ', 'T')
+    const d = new Date(normalized)
+    if (isNaN(d.getTime())) return '未知日期'
     const now = new Date()
     const diff = now.getTime() - d.getTime()
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -67,7 +73,7 @@ const CheckinCard: React.FC<CheckinCardProps> = ({
     onTap && onTap(record)
   }
 
-  const exerciseConfig = getExerciseConfig(record.exercise_type)
+  const exerciseConfig = getExerciseConfig(record.exerciseType)
 
   return (
     <View className='checkin-card' onClick={handleClick}>
@@ -75,10 +81,10 @@ const CheckinCard: React.FC<CheckinCardProps> = ({
         {showUser && record.user && (
           <View className='user-info'>
             <View className='user-avatar'>
-              {record.user.avatar_url ? (
+              {record.user.avatarUrl ? (
                 <Image
                   className='avatar-image'
-                  src={record.user.avatar_url}
+                  src={record.user.avatarUrl}
                   mode='aspectFill'
                 />
               ) : (
@@ -95,9 +101,9 @@ const CheckinCard: React.FC<CheckinCardProps> = ({
         
         <View className='time-info'>
           {showDate && (
-            <Text className='date-text'>{formatDate(record.checkin_time)}</Text>
+            <Text className='date-text'>{formatDate(record.checkinTime)}</Text>
           )}
-          <Text className='time-text'>{formatTime(record.checkin_time)}</Text>
+          <Text className='time-text'>{formatTime(record.checkinTime)}</Text>
         </View>
       </View>
       
@@ -112,20 +118,20 @@ const CheckinCard: React.FC<CheckinCardProps> = ({
           </View>
         </View>
         
-        {record.photo_url && (
+        {record.photoUrl && (
           <View className='photo-preview'>
             <Image
               className='photo-image'
-              src={record.photo_url}
+              src={record.photoUrl}
               mode='aspectFill'
             />
           </View>
         )}
       </View>
       
-      {record.note && (
+      {record.remark && (
         <View className='card-footer'>
-          <Text className='note-text'>{record.note}</Text>
+          <Text className='note-text'>{record.remark}</Text>
         </View>
       )}
     </View>

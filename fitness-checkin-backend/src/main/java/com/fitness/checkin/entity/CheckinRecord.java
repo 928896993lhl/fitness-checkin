@@ -32,9 +32,14 @@ public class CheckinRecord implements Serializable {
     private Long recordId;
 
     /**
-     * 计划ID
+     * 计划ID（可空，宽松打卡）
      */
     private Long planId;
+
+    /**
+     * 圈子ID（可空，宽松打卡；planId 非空时默认取计划所属圈子）
+     */
+    private Long circleId;
 
     /**
      * 用户ID

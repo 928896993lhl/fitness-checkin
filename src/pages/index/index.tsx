@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import Taro, { useDidShow, usePullDownRefresh, stopPullDownRefresh } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useUserState } from '../../context/UserContext'
@@ -8,6 +8,7 @@ import { Circle, Plan, UserExerciseStats } from '../../types'
 import CircleCard from '../../components/circle/CircleCard'
 import StatsCard from '../../components/common/StatsCard'
 import CheckinButton from '../../components/checkin/CheckinButton'
+import LooseCheckinPanel from '../../components/checkin/LooseCheckinPanel'
 import EmptyState from '../../components/common/EmptyState'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import './index.scss'
@@ -24,6 +25,7 @@ const Index = () => {
   const [todayDuration, setTodayDuration] = useState<number>(0)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
+  const [panelVisible, setPanelVisible] = useState<boolean>(false)
 
   /**
    * 加载首页数据
@@ -47,11 +49,11 @@ const Index = () => {
       if (circlesRes.status === 'fulfilled' && circlesRes.value.code === 200) {
         const circlesList = circlesRes.value.data || []
         setCircles(circlesList)
-        
+
         // 获取第一个圈子的当前计划
-        if (circlesList.length > 0 && circlesList[0] && circlesList[0].circle_id) {
+        if (circlesList.length > 0 && circlesList[0] && circlesList[0].circleId) {
           try {
-            const planRes = await CircleService.getCurrentPlan(circlesList[0].circle_id)
+            const planRes = await CircleService.getCurrentPlan(circlesList[0].circleId)
             if (planRes.code === 200) {
               setCurrentPlan(planRes.data)
             }
@@ -61,10 +63,10 @@ const Index = () => {
         }
       }
 
-      // 处理统计数据（今日打卡时长暂复用统计接口的总时长字段）
+      // 处理统计数据（今日打卡时长用 todayDuration 字段）
       if (statsRes.status === 'fulfilled' && statsRes.value.code === 200) {
         setStats(statsRes.value.data)
-        setTodayDuration(statsRes.value.data?.totalDuration || 0)
+        setTodayDuration(statsRes.value.data?.todayDuration || 0)
       }
     } catch (error) {
       console.error('加载首页数据失败:', error)
@@ -110,24 +112,23 @@ const Index = () => {
    */
   const navigateToCircle = (circle: Circle) => {
     Taro.navigateTo({
-      url: `/pages/circle/circle?id=${circle._id}`
+      url: `/pages/circle/detail/detail?circleId=${circle.circleId}`
     })
   }
 
   /**
-   * 跳转到打卡页
+   * 打开宽松打卡面板（无计划也可打卡）
    */
-  const navigateToCheckin = () => {
-    if (!currentPlan) {
-      Taro.showToast({
-        title: '暂无进行中的计划',
-        icon: 'none'
-      })
-      return
-    }
-    Taro.navigateTo({
-      url: `/pages/checkin/checkin?planId=${currentPlan._id}`
-    })
+  const openCheckinPanel = () => {
+    setPanelVisible(true)
+  }
+
+  /**
+   * 关闭打卡面板并刷新
+   */
+  const handlePanelClose = () => {
+    setPanelVisible(false)
+    loadData(false)
   }
 
   /**
@@ -194,8 +195,8 @@ const Index = () => {
       <View className='welcome-section'>
         <View className='welcome-header'>
           <View className='avatar-wrapper'>
-            {user?.avatar_url ? (
-              <Image className='avatar-image' src={user.avatar_url} mode='aspectFill' />
+            {user?.avatarUrl ? (
+              <Image className='avatar-image' src={user.avatarUrl} mode='aspectFill' />
             ) : (
               <View className='avatar-placeholder'>
                 <Text className='avatar-text'>{user?.nickname?.charAt(0) || '健'}</Text>
@@ -226,17 +227,17 @@ const Index = () => {
           </View>
           <View className='status-actions'>
             <CheckinButton
-              onClick={navigateToCheckin}
-              disabled={!currentPlan}
+              onClick={openCheckinPanel}
+              disabled={false}
               todayDuration={todayDuration}
-              dailyGoal={currentPlan?.daily_duration_goal || 0}
+              dailyGoal={currentPlan?.dailyDurationGoal || 0}
             />
           </View>
         </View>
-        {currentPlan && todayDuration < currentPlan.daily_duration_goal && (
+        {currentPlan && todayDuration < currentPlan.dailyDurationGoal && (
           <View className='goal-hint'>
             <Text className='goal-hint-text'>
-              距离今日目标还差 {currentPlan.daily_duration_goal - todayDuration} 分钟
+              距离今日目标还差 {currentPlan.dailyDurationGoal - todayDuration} 分钟
             </Text>
           </View>
         )}
@@ -260,8 +261,8 @@ const Index = () => {
               color='#10b981'
             />
             <StatsCard
-              title='已进行'
-              value={`${stats.passedDays || 0}天`}
+              title='连续打卡'
+              value={`${stats.currentStreak || 0}天`}
               icon='🔥'
               color='#f59e0b'
             />
@@ -303,7 +304,7 @@ const Index = () => {
           <View className='circles-list'>
             {circles.slice(0, 3).map(circle => (
               <CircleCard
-                key={circle._id}
+                key={circle.circleId}
                 circle={circle}
                 onTap={navigateToCircle}
               />
@@ -327,6 +328,13 @@ const Index = () => {
           <Text className='action-text'>个人中心</Text>
         </View>
       </View>
+
+      {/* 宽松打卡半屏面板 */}
+      <LooseCheckinPanel
+        visible={panelVisible}
+        onClose={handlePanelClose}
+        defaultPlanId={currentPlan?.planId}
+      />
     </ScrollView>
   )
 }

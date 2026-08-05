@@ -68,10 +68,11 @@ CREATE TABLE IF NOT EXISTS `plans` (
     FOREIGN KEY (`circle_id`) REFERENCES `circles`(`circle_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='计划表';
 
--- 打卡记录表
+-- 打卡记录表（宽松打卡：plan_id/circle_id 均可空）
 CREATE TABLE IF NOT EXISTS `checkin_records` (
     `record_id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '记录ID',
-    `plan_id` BIGINT NOT NULL COMMENT '计划ID',
+    `plan_id` BIGINT NULL COMMENT '计划ID（可空，宽松打卡）',
+    `circle_id` BIGINT NULL COMMENT '圈子ID（可空，宽松打卡）',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `duration` INT NOT NULL COMMENT '运动时长（分钟）',
     `exercise_type` VARCHAR(50) NOT NULL COMMENT '运动类型',
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS `checkin_records` (
     `checkin_time` DATETIME NOT NULL COMMENT '打卡时间',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX `idx_plan_id` (`plan_id`),
+    INDEX `idx_circle_id` (`circle_id`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_checkin_time` (`checkin_time`),
     INDEX `idx_plan_user_time` (`plan_id`, `user_id`, `checkin_time`),
@@ -98,3 +100,12 @@ CREATE INDEX idx_circles_invite_code ON circles(invite_code);
 CREATE INDEX idx_circle_members_user_id ON circle_members(user_id);
 CREATE INDEX idx_plans_circle_id ON plans(circle_id);
 CREATE INDEX idx_checkin_records_plan_user ON checkin_records(plan_id, user_id);
+
+-- ============================================================
+-- 生产环境迁移（宽松打卡，2026-08-01）
+-- 以下 ALTER 仅用于升级已按旧结构创建的生产库，低峰执行、先备份、勿重复执行。
+-- 全新环境直接用上面的 CREATE TABLE（已含 circle_id 列与 NULL plan_id），无需执行本段。
+-- ============================================================
+-- ALTER TABLE `checkin_records` ADD COLUMN `circle_id` BIGINT NULL COMMENT '圈子ID（可空，宽松打卡）' AFTER `plan_id`;
+-- ALTER TABLE `checkin_records` ADD INDEX `idx_circle_id` (`circle_id`);
+-- ALTER TABLE `checkin_records` MODIFY COLUMN `plan_id` BIGINT NULL COMMENT '计划ID（可空，宽松打卡）';

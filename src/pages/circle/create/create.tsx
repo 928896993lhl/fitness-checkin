@@ -71,7 +71,7 @@ const CreateCircle = () => {
       const result = await CircleService.createCircle({
         name: name.trim(),
         description: description.trim(),
-        max_members: maxMembers
+        maxMembers: maxMembers
       })
 
       if (result.code === 200) {
@@ -81,7 +81,7 @@ const CreateCircle = () => {
         })
 
         // 跳转到圈子详情页
-        const circleId = result.data?.circle_id || result.data?._id
+        const circleId = result.data?.circleId
         setTimeout(() => {
           if (circleId) {
             Taro.redirectTo({

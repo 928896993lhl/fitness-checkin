@@ -2,6 +2,7 @@
  * 常量定义
  * 存储应用中使用的所有常量
  */
+export { isCircleActive, isCreatorRole } from './index'
 
 /** API基础地址 */
 export const API_BASE_URL = 'https://keepall.cloud/api'
@@ -33,11 +34,14 @@ export const PAGINATION_DEFAULTS = {
 
 /** 打卡规则 */
 export const CHECKIN_RULES = {
-  MIN_DURATION: 10, // 最低打卡时长（分钟）
+  MIN_DURATION: 1, // 最低打卡时长（分钟），全局 1-480
   MAX_DURATION: 480, // 最高打卡时长（8小时，防止误填）
   MAX_PHOTO_SIZE: 1024 * 1024, // 最大照片大小（1MB）
   PHOTO_QUALITY: 80 // 照片压缩质量
 } as const
+
+/** 打卡时长快捷档位（分钟） */
+export const DURATION_QUICK_OPTIONS = [15, 30, 45, 60] as const
 
 /** 圈子规则 */
 export const CIRCLE_RULES = {
@@ -111,6 +115,7 @@ export const ERROR_MESSAGES = {
   NOT_FOUND: '资源不存在',
   CIRCLE_FULL: '圈子人数已满',
   ALREADY_IN_CIRCLE: '您已在圈子中',
+  CIRCLE_ARCHIVED: '圈子已归档',
   CHECKIN_DURATION_INVALID: '打卡时长不符合要求',
   CHECKIN_ALREADY_EXISTS: '今日已打卡，请勿重复打卡',
   IMAGE_TOO_LARGE: '图片大小超过限制',
@@ -131,6 +136,7 @@ export const STORAGE_KEYS = {
   TOKEN: 'token',
   USER_INFO: 'userInfo',
   LAST_CIRCLE_ID: 'lastCircleId',
+  LAST_EXERCISE_TYPE: 'lastExerciseType',
   EXERCISE_TYPES: 'exerciseTypes'
 } as const
 
@@ -145,7 +151,8 @@ export const PAGE_PATHS = {
   PLAN_DETAIL: '/pages/plan/detail/detail',
   CHECKIN: '/pages/checkin/checkin',
   PROFILE: '/pages/profile/profile',
-  PROFILE_HISTORY: '/pages/profile/history/history'
+  PROFILE_HISTORY: '/pages/profile/history/history',
+  PROFILE_SETTINGS: '/pages/profile/settings/settings'
 } as const
 
 /** 正则表达式 */

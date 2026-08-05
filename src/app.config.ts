@@ -10,7 +10,8 @@ export default defineAppConfig({
     'pages/plan/detail/detail',
     'pages/checkin/checkin',
     'pages/profile/profile',
-    'pages/profile/history/history'
+    'pages/profile/history/history',
+    'pages/profile/settings/settings'
   ],
   window: {
     backgroundTextStyle: 'light',

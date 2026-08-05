@@ -4,7 +4,7 @@ import { Plan, PlanProgress, PlanState } from '../types'
 // 初始状态
 const initialState: PlanState = {
   plans: [],
-  current_plan: null,
+  currentPlan: null,
   progress: null,
   isLoading: false,
   error: null
@@ -34,7 +34,7 @@ function planReducer(state: PlanState, action: PlanAction): PlanState {
     case 'SET_CURRENT_PLAN':
       return {
         ...state,
-        current_plan: action.payload,
+        currentPlan: action.payload,
         isLoading: false,
         error: null
       }
@@ -56,21 +56,21 @@ function planReducer(state: PlanState, action: PlanAction): PlanState {
       return {
         ...state,
         plans: state.plans.map(plan =>
-          plan._id === action.payload._id ? action.payload : plan
+          plan.planId === action.payload.planId ? action.payload : plan
         ),
-        current_plan: state.current_plan?._id === action.payload._id
+        currentPlan: state.currentPlan?.planId === action.payload.planId
           ? action.payload
-          : state.current_plan,
+          : state.currentPlan,
         isLoading: false,
         error: null
       }
     case 'REMOVE_PLAN':
       return {
         ...state,
-        plans: state.plans.filter(plan => plan._id !== action.payload),
-        current_plan: state.current_plan?._id === action.payload
+        plans: state.plans.filter(plan => plan.planId !== action.payload),
+        currentPlan: state.currentPlan?.planId === action.payload
           ? null
-          : state.current_plan,
+          : state.currentPlan,
         isLoading: false,
         error: null
       }

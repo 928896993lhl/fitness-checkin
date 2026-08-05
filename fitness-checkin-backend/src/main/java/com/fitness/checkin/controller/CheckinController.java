@@ -1,5 +1,6 @@
 package com.fitness.checkin.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fitness.checkin.common.Result;
 import com.fitness.checkin.dto.CheckinRequest;
 import com.fitness.checkin.entity.CheckinRecord;
@@ -39,7 +40,7 @@ public class CheckinController {
     }
 
     /**
-     * 用户打卡
+     * 用户打卡（宽松打卡：planId/circleId 均可空）
      */
     @PostMapping
     public Result<?> checkin(@Valid @RequestBody CheckinRequest request,
@@ -48,6 +49,7 @@ public class CheckinController {
             User user = getCurrentUser(userDetails);
             CheckinRecord record = checkinService.checkin(
                     request.getPlanId(),
+                    request.getCircleId(),
                     user.getUserId(),
                     request.getDuration(),
                     request.getExerciseType(),
@@ -62,6 +64,44 @@ public class CheckinController {
     }
 
     /**
+     * 获取我的打卡统计（用户维度，跨计划/宽松打卡）
+     */
+    @GetMapping("/stats/mine")
+    public Result<?> getUserCheckinStatsMine(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = getCurrentUser(userDetails);
+            Map<String, Object> stats = checkinService.getUserCheckinStatsMine(user.getUserId());
+            return Result.success(stats);
+        } catch (Exception e) {
+            logger.warn("查询我的打卡统计失败，返回空统计: {}", e.getMessage());
+            return Result.success(buildEmptyMineStats());
+        }
+    }
+
+    /**
+     * 获取我的打卡记录（用户维度，分页 + 可选筛选）
+     */
+    @GetMapping("/records/mine")
+    public Result<?> getUserCheckinRecordsMine(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long planId,
+            @RequestParam(required = false) String exerciseType,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = getCurrentUser(userDetails);
+            Map<String, Object> data = checkinService.getUserCheckinRecordsMine(
+                    user.getUserId(), planId, exerciseType, startDate, endDate, page, size);
+            return Result.success(data);
+        } catch (Exception e) {
+            logger.warn("查询我的打卡记录失败，返回空列表: {}", e.getMessage());
+            return Result.success(buildEmptyPageResult(page, size));
+        }
+    }
+
+    /**
      * 获取用户打卡记录 - 分页接口
      */
     @GetMapping("/records/{planId}")
@@ -72,9 +112,9 @@ public class CheckinController {
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
             User user = getCurrentUser(userDetails);
-            List<CheckinRecord> records = checkinService.getUserCheckinRecords(
+            Page<CheckinRecord> records = checkinService.getUserCheckinRecords(
                     planId, user.getUserId(), page, size);
-            return Result.success(buildPageResult(records, page, size));
+            return Result.success(buildPageResult(records.getRecords(), records.getTotal(), page, size));
         } catch (Exception e) {
             logger.warn("查询打卡记录失败，返回空列表: {}", e.getMessage());
             return Result.success(buildEmptyPageResult(page, size));
@@ -109,8 +149,8 @@ public class CheckinController {
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
             User user = getCurrentUser(userDetails);
-            List<CheckinRecord> records = checkinService.getPlanCheckinRecords(planId, page, size);
-            return Result.success(buildPageResult(records, page, size));
+            Page<CheckinRecord> records = checkinService.getPlanCheckinRecords(planId, page, size);
+            return Result.success(buildPageResult(records.getRecords(), records.getTotal(), page, size));
         } catch (Exception e) {
             logger.warn("查询计划打卡记录失败，返回空列表: {}", e.getMessage());
             return Result.success(buildEmptyPageResult(page, size));
@@ -186,12 +226,12 @@ public class CheckinController {
     }
 
     /**
-     * 构建分页结果
+     * 构建分页结果（total 用数据库总数而非 records.size()）
      */
-    private Map<String, Object> buildPageResult(List<?> records, int page, int size) {
+    private Map<String, Object> buildPageResult(List<?> records, long total, int page, int size) {
         Map<String, Object> data = new HashMap<>();
         data.put("records", records);
-        data.put("total", records.size());
+        data.put("total", total);
         data.put("page", page);
         data.put("size", size);
         return data;
@@ -221,6 +261,20 @@ public class CheckinController {
         data.put("progress", 0);
         data.put("totalCheckins", 0);
         data.put("totalMembers", 0);
+        return data;
+    }
+
+    /**
+     * 构建我的空统计（对齐 /stats/mine 字段）
+     */
+    private Map<String, Object> buildEmptyMineStats() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("todayDuration", 0);
+        data.put("totalDuration", 0);
+        data.put("checkinDays", 0);
+        data.put("totalCheckins", 0);
+        data.put("currentStreak", 0);
+        data.put("completionRate", 0);
         return data;
     }
 

@@ -14,31 +14,61 @@ import {
  */
 export class CheckinService {
   /**
-   * 创建打卡记录
+   * 创建打卡记录（宽松打卡：planId/circleId 均可空）
    */
   static async createCheckin(checkinData: CreateCheckinRequest): Promise<APIResponse<CheckinRecord>> {
     return request('/checkin', 'POST', checkinData)
   }
 
   /**
-   * 获取我的打卡记录
+   * 获取我的打卡记录（分页 + 可选筛选）
    */
   static async getMyCheckins(params: GetCheckinRecordsRequest = {}): Promise<APIResponse<PaginatedResult<CheckinRecord>>> {
-    return request('/checkin/records/0')
+    const query: Record<string, any> = {
+      page: params.page ?? 1,
+      size: params.pageSize ?? 10
+    }
+    if (params.planId !== undefined && params.planId !== null && params.planId !== '') {
+      query.planId = params.planId
+    }
+    if (params.exerciseType !== undefined && params.exerciseType !== '') {
+      query.exerciseType = params.exerciseType
+    }
+    if (params.startDate !== undefined && params.startDate !== '') {
+      query.startDate = params.startDate
+    }
+    if (params.endDate !== undefined && params.endDate !== '') {
+      query.endDate = params.endDate
+    }
+    return request('/checkin/records/mine', 'GET', query)
   }
 
   /**
    * 获取计划的打卡记录
    */
   static async getCheckinsByPlan(planId: string, params: GetCheckinRecordsRequest = {}): Promise<APIResponse<PaginatedResult<CheckinRecord>>> {
-    return request(`/checkin/records/${planId}`)
+    const query: Record<string, any> = {
+      page: params.page ?? 1,
+      size: params.pageSize ?? 10
+    }
+    if (params.startDate !== undefined && params.startDate !== '') {
+      query.startDate = params.startDate
+    }
+    if (params.endDate !== undefined && params.endDate !== '') {
+      query.endDate = params.endDate
+    }
+    return request(`/checkin/records/${planId}`, 'GET', query)
   }
 
   /**
    * 获取用户打卡记录
    */
   static async getCheckinsByUser(userId: string, params: GetCheckinRecordsRequest = {}): Promise<APIResponse<PaginatedResult<CheckinRecord>>> {
-    return request('/checkin/records/0')
+    const query: Record<string, any> = {
+      page: params.page ?? 1,
+      size: params.pageSize ?? 10
+    }
+    return request('/checkin/records/mine', 'GET', query)
   }
 
   /**
@@ -53,10 +83,10 @@ export class CheckinService {
   }
 
   /**
-   * 获取用户运动统计
+   * 获取我的运动统计
    */
   static async getUserStats(): Promise<APIResponse<UserExerciseStats>> {
-    return request('/checkin/stats/0')
+    return request('/checkin/stats/mine')
   }
 
   /**

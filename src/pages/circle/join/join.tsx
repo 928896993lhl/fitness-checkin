@@ -49,7 +49,7 @@ const JoinCircle = () => {
       setIsLoading(true)
 
       const result = await CircleService.joinCircle({
-        invite_code: inviteCode.trim()
+        inviteCode: inviteCode.trim()
       })
 
       if (result.code === 200) {
@@ -61,7 +61,7 @@ const JoinCircle = () => {
         // 跳转到圈子详情页
         setTimeout(() => {
           Taro.redirectTo({
-            url: `/pages/circle/circle?id=${result.data._id}`
+            url: `/pages/circle/detail/detail?circleId=${result.data.circleId}`
           })
         }, 1500)
       } else {

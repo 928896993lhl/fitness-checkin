@@ -1,21 +1,22 @@
 import { View, Text } from '@tarojs/components'
 import { Circle } from '../../types'
+import { isCircleActive } from '../../types/constants'
 import './CircleCard.scss'
 
 interface CircleCardProps {
   circle: Circle
-  member_count?: number
+  memberCount?: number
   onTap?: (circle: Circle) => void
   compact?: boolean
 }
 
 /**
  * 圈子卡片组件
- * 用于展示圈子信息
+ * 用于展示圈子信息（邀请码默认不显示，仅详情页头部展示）
  */
 const CircleCard: React.FC<CircleCardProps> = ({
   circle,
-  member_count,
+  memberCount,
   onTap,
   compact = false
 }) => {
@@ -46,6 +47,8 @@ const CircleCard: React.FC<CircleCardProps> = ({
     return `${d.getMonth() + 1}月${d.getDate()}日创建`
   }
 
+  const active = isCircleActive(circle.status)
+
   return (
     <View
       className={`circle-card ${compact ? 'compact' : ''}`}
@@ -58,7 +61,7 @@ const CircleCard: React.FC<CircleCardProps> = ({
         <View className='circle-info'>
           <Text className='circle-name'>{circle.name}</Text>
           <Text className='circle-meta'>
-            {member_count || 0}/{circle.max_members}人 · {formatCreatedTime(circle.created_at)}
+            {memberCount || 0}/{circle.maxMembers}人 · {formatCreatedTime(circle.createdAt)}
           </Text>
         </View>
         <View className='card-arrow'>
@@ -74,13 +77,9 @@ const CircleCard: React.FC<CircleCardProps> = ({
       
       {!compact && (
         <View className='card-footer'>
-          <View className='invite-code'>
-            <Text className='code-label'>邀请码:</Text>
-            <Text className='code-value'>{circle.invite_code}</Text>
-          </View>
-          <View className={`status-tag ${Number(circle.status) === 1 ? 'active' : 'archived'}`}>
+          <View className={`status-tag ${active ? 'active' : 'archived'}`}>
             <Text className='status-text'>
-              {Number(circle.status) === 1 ? '活跃' : '已归档'}
+              {active ? '活跃' : '已归档'}
             </Text>
           </View>
         </View>

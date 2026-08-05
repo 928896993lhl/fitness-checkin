@@ -126,6 +126,38 @@ public class CircleController {
     }
 
     /**
+     * 归档圈子（仅创建者）
+     */
+    @PostMapping("/{circleId}/archive")
+    public Result<?> archiveCircle(@PathVariable Long circleId,
+                                  @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = getCurrentUser(userDetails);
+            circleService.archiveCircle(circleId, user.getUserId());
+            return Result.success(null);
+        } catch (Exception e) {
+            logger.error("归档圈子失败: {}", e.getMessage());
+            return Result.error(500, e.getMessage());
+        }
+    }
+
+    /**
+     * 恢复圈子（仅创建者）
+     */
+    @PostMapping("/{circleId}/restore")
+    public Result<?> restoreCircle(@PathVariable Long circleId,
+                                  @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = getCurrentUser(userDetails);
+            circleService.restoreCircle(circleId, user.getUserId());
+            return Result.success(null);
+        } catch (Exception e) {
+            logger.error("恢复圈子失败: {}", e.getMessage());
+            return Result.error(500, e.getMessage());
+        }
+    }
+
+    /**
      * 获取当前用户
      */
     private User getCurrentUser(UserDetails userDetails) {

@@ -1,110 +1,158 @@
 classDiagram
+    %% ================= 后端实体（线上输出即驼峰） =================
     class User {
-        +Long id
+        +Long userId
         +String openid
         +String nickname
         +String avatarUrl
-        +Date createdAt
-        +Date updatedAt
+        +LocalDateTime createdAt
+        +LocalDateTime updatedAt
     }
-    
     class Circle {
-        +Long id
+        +Long circleId
         +String name
+        +String description
         +Long creatorId
         +Integer maxMembers
         +String inviteCode
-        +Integer status
-        +Date createdAt
-        +Date updatedAt
+        +Integer status  "1=活跃 0=已归档"
+        +LocalDateTime createdAt
+        +LocalDateTime updatedAt
     }
-    
     class CircleMember {
         +Long id
         +Long circleId
         +Long userId
-        +Integer role
-        +Date joinedAt
+        +Integer role  "0普通 1管理 2创建者"
+        +LocalDateTime joinedAt
     }
-    
     class Plan {
-        +Long id
+        +Long planId
         +Long circleId
         +String name
-        +Date startDate
-        +Date endDate
+        +LocalDate startDate
+        +LocalDate endDate
         +Integer totalDurationGoal
         +Integer dailyDurationGoal
         +Integer circleTotalGoal
         +Integer minDurationPerCheckin
-        +Integer status
-        +Date createdAt
-        +Date updatedAt
+        +Integer status  "0未开始 1进行中 2已结束"
     }
-    
     class CheckinRecord {
-        +Long id
-        +Long planId
+        +Long recordId
+        +Long planId  "可空=宽松打卡"
+        +Long circleId  "新增，可空"
         +Long userId
         +Integer duration
         +String exerciseType
         +String photoUrl
-        +Date checkinTime
-        +Date createdAt
+        +String remark
+        +LocalDateTime checkinTime
+        +LocalDateTime createdAt
     }
-    
-    class AuthService {
-        +login(LoginRequest) LoginResponse
-        +getUserInfo(Long) User
-        +updateUserInfo(Long, User) void
-    }
-    
-    class CircleService {
-        +createCircle(CircleCreateRequest) Circle
-        +joinCircle(Long userId, String inviteCode) Circle
-        +getCircleDetail(Long circleId) Circle
-        +getCircleMembers(Long circleId) List~CircleMember~
-        +getUserCircles(Long userId) List~Circle~
-    }
-    
-    class PlanService {
-        +createPlan(PlanCreateRequest) Plan
-        +startPlan(Long planId) Plan
-        +getPlanDetail(Long planId) Plan
-        +getCirclePlans(Long circleId) List~Plan~
-        +updatePlanStatus() void
-    }
-    
+
+    Circle "1" --> "0..*" CircleMember : 包含
+    Circle "1" --> "0..*" Plan : 拥有
+    Circle "1" --> "0..*" CheckinRecord : 归属(可空)
+    Plan "1" --> "0..*" CheckinRecord : 关联(可空)
+    User "1" --> "0..*" CheckinRecord : 打卡
+
+    %% ================= 后端服务/控制器 =================
     class CheckinService {
-        +checkin(CheckinRequest) CheckinRecord
-        +getCheckinRecords(Long planId, Long userId) List~CheckinRecord~
-        +getUserDailyDuration(Long planId, Long userId) Integer
-        +getUserTotalDuration(Long planId, Long userId) Integer
-        +getCircleTotalDuration(Long planId) Integer
+        <<interface>>
+        +checkin(planId, userId, duration, exerciseType, photoUrl, remark, circleId) CheckinRecord
+        +getUserCheckinStatsMine(userId) Map
+        +getUserCheckinRecordsMine(userId, planId, exerciseType, startDate, endDate, page, size) List
+        +getUserCheckinRecords(planId, userId, page, size) List
+        +getUserCheckinStats(planId, userId) Map
     }
-    
-    class FileService {
-        +uploadFile(MultipartFile) String
-        +getFileUrl(String) String
-        +deleteFile(String) void
+    class CircleService {
+        <<interface>>
+        +archiveCircle(circleId, userId) void
+        +restoreCircle(circleId, userId) void
+        +isCircleMember(circleId, userId) boolean
+        +getCircleDetail(circleId, userId) Map
     }
-    
-    class NotifyService {
-        +sendDailySummary(Long circleId) void
-        +sendPlanEndReminder(Long planId, Long userId) void
-        +sendWxSubscribeMessage(Long userId, String templateId, Map data) void
+    class CheckinController {
+        +checkin(request, userDetails) Result
+        +getUserCheckinStatsMine(userDetails) Result
+        +getUserCheckinRecordsMine(userDetails, page, size) Result
     }
-    
-    User "1" -- "n" CircleMember : belongs to
-    Circle "1" -- "n" CircleMember : has
-    Circle "1" -- "n" Plan : has
-    Plan "1" -- "n" CheckinRecord : has
-    User "1" -- "n" CheckinRecord : creates
-    
-    AuthService --> User
-    CircleService --> Circle
-    CircleService --> CircleMember
-    PlanService --> Plan
-    CheckinService --> CheckinRecord
-    FileService --> String
-    NotifyService --> User
+    class CircleController {
+        +archiveCircle(circleId, userDetails) Result
+        +restoreCircle(circleId, userDetails) Result
+    }
+    CheckinController --> CheckinService
+    CircleController --> CircleService
+    CheckinService ..> CheckinRecord
+    CircleService ..> Circle
+
+    %% ================= 前端类型 =================
+    class FrontendCircle {
+        +circleId: ID
+        +name: string
+        +creatorId: ID
+        +maxMembers: number
+        +inviteCode: string
+        +status: 0 | 1
+        +memberCount?: number
+    }
+    class FrontendPlan {
+        +planId: ID
+        +circleId: ID
+        +startDate: string
+        +endDate: string
+        +totalDurationGoal: number
+        +dailyDurationGoal: number
+        +minDurationPerCheckin: number
+        +status: number
+    }
+    class FrontendCheckinRecord {
+        +recordId: ID
+        +planId?: ID
+        +circleId?: ID
+        +userId: ID
+        +duration: number
+        +exerciseType: string
+        +photoUrl: string
+        +remark: string
+        +checkinTime: Timestamp
+    }
+    class UserStatsMine {
+        +todayDuration: number
+        +totalDuration: number
+        +checkinDays: number
+        +totalCheckins: number
+        +currentStreak: number
+        +completionRate: number
+    }
+
+    %% ================= 前端组件/服务 =================
+    class LooseCheckinPanel {
+        +visible: boolean
+        +planId?: ID
+        +defaultCircleId?: ID
+        -exerciseType: ExerciseType
+        -duration: number
+        -circleId?: ID
+        -photoPath: string
+        -remark: string
+        +onSubmit() void
+        +onClose() void
+        +onSuccess() void
+    }
+    class CheckinServiceFE {
+        +createCheckin(data: CreateCheckinRequest) Promise~APIResponse~CheckinRecord~~
+        +getMyStats() Promise~APIResponse~UserStatsMine~~
+        +getMyCheckins(params) Promise~APIResponse~PaginatedResult~CheckinRecord~~
+        +uploadPhoto(filePath) Promise~APIResponse~{url}~~
+    }
+    class CircleServiceFE {
+        +archiveCircle(circleId) Promise
+        +restoreCircle(circleId) Promise
+        +getMyCircles() Promise
+        +getCircleDetail(circleId) Promise
+    }
+    LooseCheckinPanel --> CheckinServiceFE
+    LooseCheckinPanel --> UserStatsMine
+    LooseCheckinPanel ..> FrontendCircle : 选择圈子

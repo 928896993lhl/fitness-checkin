@@ -85,4 +85,20 @@ public interface CircleService {
      * @return 圈子实体
      */
     Circle getCircleById(Long circleId);
+
+    /**
+     * 归档圈子（仅创建者，status 1→0）
+     * 
+     * @param circleId 圈子ID
+     * @param userId   操作人用户ID
+     */
+    void archiveCircle(Long circleId, Long userId);
+
+    /**
+     * 恢复圈子（仅创建者，status 0→1）
+     * 
+     * @param circleId 圈子ID
+     * @param userId   操作人用户ID
+     */
+    void restoreCircle(Long circleId, Long userId);
 }

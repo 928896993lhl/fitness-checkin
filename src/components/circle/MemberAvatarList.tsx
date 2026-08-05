@@ -37,7 +37,7 @@ const MemberAvatarList: React.FC<MemberAvatarListProps> = ({
       <View className='avatar-list'>
         {displayMembers.map((member, index) => (
           <View
-            key={member._id}
+            key={member.id || member.userId}
             className='avatar-item'
             style={{
               width: `${size}rpx`,
@@ -46,10 +46,10 @@ const MemberAvatarList: React.FC<MemberAvatarListProps> = ({
               zIndex: maxDisplay - index
             }}
           >
-            {member.user?.avatar_url ? (
+            {member.user?.avatarUrl ? (
               <Image
                 className='avatar-image'
-                src={member.user.avatar_url}
+                src={member.user.avatarUrl}
                 mode='aspectFill'
                 style={{ width: '100%', height: '100%' }}
               />
