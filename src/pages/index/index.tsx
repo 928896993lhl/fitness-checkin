@@ -38,10 +38,9 @@ const Index = () => {
       if (showLoading) setIsLoading(true)
 
       // 并行请求数据
-      const [circlesRes, statsRes, todayRes] = await Promise.allSettled([
+      const [circlesRes, statsRes] = await Promise.allSettled([
         CircleService.getMyCircles(),
-        CheckinService.getUserStats(),
-        CheckinService.getTodayCheckins()
+        CheckinService.getUserStats()
       ])
 
       // 处理圈子数据
@@ -62,14 +61,10 @@ const Index = () => {
         }
       }
 
-      // 处理统计数据
+      // 处理统计数据（今日打卡时长暂复用统计接口的总时长字段）
       if (statsRes.status === 'fulfilled' && statsRes.value.code === 200) {
         setStats(statsRes.value.data)
-      }
-
-      // 处理今日打卡数据
-      if (todayRes.status === 'fulfilled' && todayRes.value.code === 200) {
-        setTodayDuration(todayRes.value.data?.total_duration || 0)
+        setTodayDuration(statsRes.value.data?.totalDuration || 0)
       }
     } catch (error) {
       console.error('加载首页数据失败:', error)

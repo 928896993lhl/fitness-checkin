@@ -204,22 +204,28 @@ export interface GetCheckinRecordsRequest {
 
 /** 用户运动统计 */
 export interface UserExerciseStats {
-  total_duration: number // 总运动时长（分钟）
-  total_checkins: number // 总打卡次数
-  current_streak: number // 当前连续打卡天数
-  max_streak: number // 最大连续打卡天数
-  this_week_duration: number // 本周运动时长
-  this_month_duration: number // 本月运动时长
+  totalDuration: number // 总运动时长（分钟）
+  totalCheckins: number // 总打卡次数
+  checkinDays: number // 累计打卡天数
+  currentStreak: number // 当前连续打卡天数
+  maxStreak: number // 最大连续打卡天数
+  passedDays: number // 计划已进行天数
+  completionRate: number // 计划完成率（0-100）
+  thisWeekDuration: number // 本周运动时长
+  thisMonthDuration: number // 本月运动时长
 }
 
 /** 圈子运动统计 */
 export interface CircleExerciseStats {
   circle_id: ID
-  total_duration: number // 圈子总运动时长
-  total_checkins: number // 圈子总打卡次数
+  totalDuration: number // 圈子总运动时长
+  totalCheckins: number // 圈子总打卡次数
   member_count: number // 成员数量
-  active_member_count: number // 活跃成员数量（本周打卡）
-  average_duration: number // 人均运动时长
+  activeMemberCount: number // 活跃成员数量（本周打卡）
+  averageDuration: number // 人均运动时长
+  checkinDays: number // 累计打卡天数
+  passedDays: number // 计划已进行天数
+  completionRate: number // 计划完成率（0-100）
 }
 
 /** 计划进度 */

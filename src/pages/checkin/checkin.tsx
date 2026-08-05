@@ -130,7 +130,7 @@ const Checkin = () => {
       if (photoPath && !photoUrl) {
         showToast({ title: '上传照片中...', icon: 'loading', duration: 10000 })
         const uploadRes = await CheckinService.uploadPhoto(photoPath)
-        if (uploadRes.code === 0) {
+        if (uploadRes.code === 200) {
           finalPhotoUrl = uploadRes.data.tempFileURL
           setPhotoUrl(finalPhotoUrl)
         } else {
@@ -148,7 +148,7 @@ const Checkin = () => {
         note: note.trim()
       })
 
-      if (result.code === 0) {
+      if (result.code === 200) {
         showToast({
           title: SUCCESS_MESSAGES.CHECKIN_SUCCESS,
           icon: 'success'

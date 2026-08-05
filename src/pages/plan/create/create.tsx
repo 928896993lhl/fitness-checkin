@@ -90,7 +90,7 @@ const CreatePlan = () => {
         min_duration_per_checkin: minDurationPerCheckin
       })
 
-      if (result.code === 0) {
+      if (result.code === 200) {
         Taro.showToast({
           title: SUCCESS_MESSAGES.PLAN_CREATED,
           icon: 'success'

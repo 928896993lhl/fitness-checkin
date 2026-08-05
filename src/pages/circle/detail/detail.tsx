@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Taro, { useDidShow, usePullDownRefresh, stopPullDownRefresh, useRouter } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh, stopPullDownRefresh, useRouter, useShareAppMessage } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useUserState } from '../../../context/UserContext'
 import { CircleService } from '../../../services/CircleService'
@@ -25,6 +25,14 @@ const CircleDetail = () => {
   const [stats, setStats] = useState<CircleExerciseStats | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
+
+  /**
+   * 定义分享内容（hook 必须在组件顶层无条件调用）
+   */
+  useShareAppMessage(() => ({
+    title: `邀请您加入健身打卡圈子「${circle?.name}」`,
+    path: `/pages/circle/join/join?code=${circle?.invite_code}`
+  }))
 
   /**
    * 加载圈子详情数据
@@ -174,18 +182,6 @@ const CircleDetail = () => {
     return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`
   }
 
-  /**
-   * 定义分享内容
-   */
-  Taro.useShareAppMessage
-    ? (Taro as any).useShareAppMessage(() => {
-        return {
-          title: `邀请您加入健身打卡圈子「${circle?.name}」`,
-          path: `/pages/circle/join/join?code=${circle?.invite_code}`
-        }
-      })
-    : null
-
   // 加载状态
   if (isLoading) {
     return (
@@ -266,20 +262,20 @@ const CircleDetail = () => {
           <Text className='card-title'>运动统计</Text>
           <View className='stats-grid'>
             <View className='stat-item'>
-              <Text className='stat-value'>{formatDuration(stats.total_duration)}</Text>
+              <Text className='stat-value'>{formatDuration(stats.totalDuration || 0)}</Text>
               <Text className='stat-label'>总运动时长</Text>
             </View>
             <View className='stat-item'>
-              <Text className='stat-value'>{stats.total_checkins || 0}</Text>
+              <Text className='stat-value'>{stats.checkinDays || 0}</Text>
               <Text className='stat-label'>总打卡次数</Text>
             </View>
             <View className='stat-item'>
-              <Text className='stat-value'>{stats.active_member_count || 0}</Text>
+              <Text className='stat-value'>{stats.passedDays || 0}</Text>
               <Text className='stat-label'>本周活跃</Text>
             </View>
             <View className='stat-item'>
-              <Text className='stat-value'>{formatDuration(stats.average_duration)}</Text>
-              <Text className='stat-label'>人均运动</Text>
+              <Text className='stat-value'>{Math.round(stats.completionRate || 0)}%</Text>
+              <Text className='stat-label'>完成率</Text>
             </View>
           </View>
         </View>

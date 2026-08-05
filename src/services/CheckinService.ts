@@ -45,8 +45,8 @@ export class CheckinService {
    * 获取今日打卡记录
    */
   static async getTodayCheckins(planId?: string): Promise<APIResponse<{
-    records: CheckinRecord[]
-    total_duration: number
+    checked: boolean
+    planId?: string
   }>> {
     const url = planId ? `/checkin/check-today/${planId}` : '/checkin/check-today/0'
     return request(url)

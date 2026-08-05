@@ -174,25 +174,25 @@ const Profile = () => {
           <View className='stats-grid'>
             <StatsCard
               title='累计运动'
-              value={formatDuration(stats.total_duration)}
+              value={formatDuration(stats.totalDuration || 0)}
               icon='🏆'
               color='#f59e0b'
             />
             <StatsCard
-              title='打卡次数'
-              value={`${stats.total_checkins}次`}
+              title='打卡天数'
+              value={`${stats.checkinDays || 0}天`}
               icon='📸'
               color='#10b981'
             />
             <StatsCard
-              title='连续打卡'
-              value={`${stats.current_streak}天`}
+              title='计划进度'
+              value={`${stats.passedDays || 0}天`}
               icon='🔥'
               color='#ef4444'
             />
             <StatsCard
-              title='最长连续'
-              value={`${stats.max_streak}天`}
+              title='完成率'
+              value={`${Math.round(stats.completionRate || 0)}%`}
               icon='⭐'
               color='#8b5cf6'
             />

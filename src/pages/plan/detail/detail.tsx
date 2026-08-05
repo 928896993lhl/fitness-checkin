@@ -37,15 +37,15 @@ const PlanDetail = () => {
         CheckinService.getCheckinsByPlan(planId, { page_size: 10 })
       ])
 
-      if (planRes.status === 'fulfilled' && planRes.value.code === 0) {
+      if (planRes.status === 'fulfilled' && planRes.value.code === 200) {
         setPlan(planRes.value.data)
       }
 
-      if (progressRes.status === 'fulfilled' && progressRes.value.code === 0) {
+      if (progressRes.status === 'fulfilled' && progressRes.value.code === 200) {
         setProgress(progressRes.value.data)
       }
 
-      if (checkinsRes.status === 'fulfilled' && checkinsRes.value.code === 0) {
+      if (checkinsRes.status === 'fulfilled' && checkinsRes.value.code === 200) {
         setRecentCheckins(checkinsRes.value.data.list)
       }
     } catch (error) {

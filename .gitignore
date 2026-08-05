@@ -18,6 +18,7 @@ build/
 .vscode/
 *.swp
 *.swo
+project.private.config.json
 
 # OS
 .DS_Store

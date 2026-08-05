@@ -20,7 +20,7 @@ export const API_PATHS = {
   USER: '/auth',
   CIRCLE: '/circles',
   PLAN: '/plans',
-  CHECKIN: '/checkins',
+  CHECKIN: '/checkin',
   MESSAGE: '/messages'
 } as const
 
