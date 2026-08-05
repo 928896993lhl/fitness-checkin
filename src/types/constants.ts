@@ -46,8 +46,27 @@ export const DURATION_QUICK_OPTIONS = [15, 30, 45, 60] as const
 /** 圈子规则 */
 export const CIRCLE_RULES = {
   MIN_MEMBERS: 2,
-  MAX_MEMBERS: 8,
+  MAX_MEMBERS: 50,
   INVITE_CODE_LENGTH: 8 // 邀请码长度
+} as const
+
+/** 创建圈子可选人数档位 */
+export const MEMBER_LIMIT_OPTIONS = [2, 5, 8, 15, 30, 50] as const
+
+/** 热力图色阶（GitHub 风格，按分钟区间着色） */
+export const HEATMAP_LEVELS = [
+  { min: 0, color: '#EBEDF0' },
+  { min: 1, color: '#9BE9A8' },
+  { min: 30, color: '#40C463' },
+  { min: 60, color: '#216E39' }
+] as const
+
+/** 运动类型里程系数（km/h），与后端 BadgeCode.EXERCISE_SPEED_KMH 必须同步 */
+export const EXERCISE_SPEED_KMH: Record<string, number> = {
+  running: 8,
+  walking: 5,
+  cycling: 15,
+  swimming: 3
 } as const
 
 /** 计划规则 */
@@ -149,9 +168,11 @@ export const PAGE_PATHS = {
   CIRCLE_JOIN: '/pages/circle/join/join',
   PLAN_CREATE: '/pages/plan/create/create',
   PLAN_DETAIL: '/pages/plan/detail/detail',
+  PLAN_EDIT: '/pages/plan/edit/edit',
   CHECKIN: '/pages/checkin/checkin',
   PROFILE: '/pages/profile/profile',
   PROFILE_HISTORY: '/pages/profile/history/history',
+  PROFILE_CAREER: '/pages/profile/career/career',
   PROFILE_SETTINGS: '/pages/profile/settings/settings'
 } as const
 

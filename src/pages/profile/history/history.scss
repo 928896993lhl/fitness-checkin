@@ -5,6 +5,31 @@
   flex-direction: column;
 }
 
+.date-filter-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #eff6ff;
+  padding: 16rpx 30rpx;
+  margin-bottom: 16rpx;
+
+  .date-filter-text {
+    font-size: 24rpx;
+    color: #1d4ed8;
+  }
+
+  .date-filter-clear {
+    padding: 8rpx 20rpx;
+    background-color: #dbeafe;
+    border-radius: 24rpx;
+
+    .date-filter-clear-text {
+      font-size: 22rpx;
+      color: #1d4ed8;
+    }
+  }
+}
+
 .filter-section {
   background-color: #fff;
   padding: 20rpx 0;

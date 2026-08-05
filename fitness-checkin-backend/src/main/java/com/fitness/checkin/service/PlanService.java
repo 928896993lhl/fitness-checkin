@@ -1,5 +1,6 @@
 package com.fitness.checkin.service;
 
+import com.fitness.checkin.dto.UpdatePlanRequest;
 import com.fitness.checkin.entity.Plan;
 
 import java.time.LocalDate;
@@ -43,6 +44,17 @@ public interface PlanService {
      * @return 更新后的计划
      */
     Plan startPlan(Long planId, Long userId);
+
+    /**
+     * 更新计划（部分字段）
+     * 仅圈子管理员（role≥1）且仅 status=0 的计划可修改；circleId 不可改；至少一个字段
+     * 
+     * @param planId  计划ID
+     * @param userId  操作者用户ID
+     * @param request 更新请求（全部字段可选）
+     * @return 更新后的计划
+     */
+    Plan updatePlan(Long planId, Long userId, UpdatePlanRequest request);
 
     /**
      * 获取计划详情

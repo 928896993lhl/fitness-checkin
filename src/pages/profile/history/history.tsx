@@ -17,10 +17,15 @@ const History = () => {
   const router = useRouter()
   const { user } = useUserState()
   const circleId = router.params.circleId || ''
+  // 支持从热力图点击跳转携带日期筛选（startDate/endDate 成对出现）
+  const routeStartDate = router.params.startDate || ''
+  const routeEndDate = router.params.endDate || ''
 
   const [records, setRecords] = useState<CheckinRecord[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedPlan, setSelectedPlan] = useState<string>('all')
+  const [startDate, setStartDate] = useState<string>(routeStartDate)
+  const [endDate, setEndDate] = useState<string>(routeEndDate)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [page, setPage] = useState<number>(1)
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -43,6 +48,12 @@ const History = () => {
 
       if (selectedPlan !== 'all') {
         params.planId = selectedPlan
+      }
+      if (startDate) {
+        params.startDate = startDate
+      }
+      if (endDate) {
+        params.endDate = endDate
       }
 
       const result = await CheckinService.getMyCheckins(params)
@@ -90,7 +101,7 @@ const History = () => {
 
   useEffect(() => {
     loadRecords(true)
-  }, [selectedPlan])
+  }, [selectedPlan, startDate, endDate])
 
   /**
    * 加载更多
@@ -123,8 +134,29 @@ const History = () => {
    */
   const totalDuration = (records || []).reduce((sum, record) => sum + (record.duration || 0), 0)
 
+  /**
+   * 清除日期筛选（从热力图跳转进入时可回到全部记录）
+   */
+  const clearDateFilter = () => {
+    setStartDate('')
+    setEndDate('')
+    setPage(1)
+  }
+
   return (
     <View className='history-page'>
+      {/* 日期筛选提示（从热力图跳转进入时展示） */}
+      {(startDate || endDate) && (
+        <View className='date-filter-banner'>
+          <Text className='date-filter-text'>
+            已筛选：{startDate || '--'} 至 {endDate || '--'}
+          </Text>
+          <View className='date-filter-clear' onClick={clearDateFilter}>
+            <Text className='date-filter-clear-text'>清除筛选</Text>
+          </View>
+        </View>
+      )}
+
       {/* 筛选栏 */}
       <View className='filter-section'>
         <ScrollView

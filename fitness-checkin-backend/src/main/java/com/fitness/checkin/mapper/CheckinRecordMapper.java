@@ -151,4 +151,30 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
             "FROM checkin_records WHERE user_id = #{userId} " +
             "ORDER BY DATE_FORMAT(checkin_time, '%Y-%m-%d') DESC")
     List<String> selectDistinctCheckinDatesByUserId(@Param("userId") Long userId);
+
+    /**
+     * 查询用户运动类型分布（用户维度，跨计划/宽松打卡）
+     * 
+     * @param userId 用户ID
+     * @return 运动类型分布列表 [{type, duration}, ...]
+     */
+    @Select("SELECT exercise_type AS type, COALESCE(SUM(duration), 0) AS duration " +
+            "FROM checkin_records WHERE user_id = #{userId} " +
+            "GROUP BY exercise_type")
+    List<Map<String, Object>> selectExerciseTypeBreakdownByUserId(@Param("userId") Long userId);
+
+    /**
+     * 查询用户热力图数据（按天聚合，用户维度）
+     * 仅返回有打卡记录的日期
+     * 
+     * @param userId    用户ID
+     * @param startDate 起始时间（含）
+     * @return 按天聚合列表 [{date, minutes, count}, ...]
+     */
+    @Select("SELECT DATE_FORMAT(checkin_time, '%Y-%m-%d') AS date, COALESCE(SUM(duration), 0) AS minutes, COUNT(*) AS count " +
+            "FROM checkin_records WHERE user_id = #{userId} AND checkin_time >= #{startDate} " +
+            "GROUP BY DATE_FORMAT(checkin_time, '%Y-%m-%d') " +
+            "ORDER BY date ASC")
+    List<Map<String, Object>> selectHeatmapByUserId(@Param("userId") Long userId,
+                                                    @Param("startDate") LocalDateTime startDate);
 }

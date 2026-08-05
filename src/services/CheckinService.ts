@@ -4,6 +4,7 @@ import {
   UserExerciseStats,
   CreateCheckinRequest,
   GetCheckinRecordsRequest,
+  HeatmapData,
   APIResponse,
   PaginatedResult
 } from '../types'
@@ -15,9 +16,18 @@ import {
 export class CheckinService {
   /**
    * 创建打卡记录（宽松打卡：planId/circleId 均可空）
+   * 响应 data 含瞬态字段 newlyUnlockedBadges（本次新解锁徽章，向后兼容）
    */
   static async createCheckin(checkinData: CreateCheckinRequest): Promise<APIResponse<CheckinRecord>> {
     return request('/checkin', 'POST', checkinData)
+  }
+
+  /**
+   * 获取我的活跃度热力图（按天聚合）
+   * @param days 天数（默认365，后端截断 [7,365]）
+   */
+  static async getHeatmap(days: number = 365): Promise<APIResponse<HeatmapData>> {
+    return request(`/checkin/heatmap/mine?days=${days}`)
   }
 
   /**
@@ -91,10 +101,12 @@ export class CheckinService {
 
   /**
    * 上传照片
+   * 🔴 必须传 name='file'（后端 FileController 为 @RequestParam("file")；
+   *    旧代码传 'photo' 会导致头像/打卡照片 400）
    */
   static async uploadPhoto(filePath: string): Promise<APIResponse<{
     url: string
   }>> {
-    return uploadFile(filePath, 'photo')
+    return uploadFile(filePath, 'file')
   }
 }

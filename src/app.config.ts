@@ -11,7 +11,9 @@ export default defineAppConfig({
     'pages/checkin/checkin',
     'pages/profile/profile',
     'pages/profile/history/history',
-    'pages/profile/settings/settings'
+    'pages/profile/career/career',
+    'pages/profile/settings/settings',
+    'pages/plan/edit/edit'
   ],
   window: {
     backgroundTextStyle: 'light',

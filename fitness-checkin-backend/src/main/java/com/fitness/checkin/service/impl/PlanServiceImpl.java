@@ -1,6 +1,7 @@
 package com.fitness.checkin.service.impl;
 
 import com.fitness.checkin.common.BusinessException;
+import com.fitness.checkin.dto.UpdatePlanRequest;
 import com.fitness.checkin.entity.Circle;
 import com.fitness.checkin.entity.CheckinRecord;
 import com.fitness.checkin.entity.Plan;
@@ -121,6 +122,66 @@ public class PlanServiceImpl implements PlanService {
     }
 
     @Override
+    public Plan updatePlan(Long planId, Long userId, UpdatePlanRequest request) {
+        Plan plan = getPlanById(planId);
+
+        // 验证用户是圈子管理员（role ≥ 1）
+        if (!circleService.isCircleAdmin(plan.getCircleId(), userId)) {
+            throw BusinessException.forbidden("只有圈子管理员可以修改计划");
+        }
+
+        // 验证计划状态：仅未开始可修改
+        if (plan.getStatus() != 0) {
+            throw BusinessException.badRequest("仅未开始的计划可修改");
+        }
+
+        // 至少提供一个字段
+        if (request.getName() == null && request.getDescription() == null
+                && request.getStartDate() == null && request.getEndDate() == null
+                && request.getTotalDurationGoal() == null && request.getDailyDurationGoal() == null
+                && request.getCircleTotalGoal() == null && request.getMinDurationPerCheckin() == null) {
+            throw BusinessException.badRequest("至少提供一个需要修改的字段");
+        }
+
+        // 部分字段覆盖（circleId 不在 UpdatePlanRequest 中，天然不可改）
+        if (request.getName() != null) {
+            plan.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            plan.setDescription(request.getDescription());
+        }
+        if (request.getStartDate() != null) {
+            plan.setStartDate(request.getStartDate());
+        }
+        if (request.getEndDate() != null) {
+            plan.setEndDate(request.getEndDate());
+        }
+        if (request.getTotalDurationGoal() != null) {
+            plan.setTotalDurationGoal(request.getTotalDurationGoal());
+        }
+        if (request.getDailyDurationGoal() != null) {
+            plan.setDailyDurationGoal(request.getDailyDurationGoal());
+        }
+        if (request.getCircleTotalGoal() != null) {
+            plan.setCircleTotalGoal(request.getCircleTotalGoal());
+        }
+        if (request.getMinDurationPerCheckin() != null) {
+            plan.setMinDurationPerCheckin(request.getMinDurationPerCheckin());
+        }
+
+        // 日期规则同创建：endDate 不能早于 startDate
+        if (plan.getEndDate().isBefore(plan.getStartDate())) {
+            throw BusinessException.badRequest("结束日期不能早于开始日期");
+        }
+
+        plan.setUpdatedAt(LocalDateTime.now());
+        planMapper.updateById(plan);
+        logger.info("更新计划: {}", planId);
+
+        return plan;
+    }
+
+    @Override
     public Map<String, Object> getPlanDetail(Long planId, Long userId) {
         Plan plan = getPlanById(planId);
 
@@ -189,11 +250,16 @@ public class PlanServiceImpl implements PlanService {
         return plans.stream().map(plan -> {
             Map<String, Object> planInfo = new HashMap<>();
             planInfo.put("planId", plan.getPlanId());
+            planInfo.put("circleId", plan.getCircleId());
             planInfo.put("name", plan.getName());
             planInfo.put("description", plan.getDescription());
             planInfo.put("startDate", plan.getStartDate());
             planInfo.put("endDate", plan.getEndDate());
             planInfo.put("status", plan.getStatus());
+            planInfo.put("totalDurationGoal", plan.getTotalDurationGoal());
+            planInfo.put("dailyDurationGoal", plan.getDailyDurationGoal());
+            planInfo.put("circleTotalGoal", plan.getCircleTotalGoal());
+            planInfo.put("minDurationPerCheckin", plan.getMinDurationPerCheckin());
             planInfo.put("createdAt", plan.getCreatedAt());
 
             // 获取计划统计

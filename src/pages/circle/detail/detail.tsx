@@ -3,6 +3,7 @@ import Taro, { useDidShow, usePullDownRefresh, stopPullDownRefresh, useRouter, u
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useUserState } from '../../../context/UserContext'
 import { CircleService } from '../../../services/CircleService'
+import { PlanService } from '../../../services/PlanService'
 import { Circle, Plan, CircleMember, UserExerciseStats } from '../../../types'
 import { isCircleActive } from '../../../types/constants'
 import MemberAvatarList from '../../../components/circle/MemberAvatarList'
@@ -13,8 +14,20 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner'
 import './detail.scss'
 
 /**
+ * 从圈子计划列表中选择"当前计划"
+ * 规则：优先进行中（status=1）；否则取最新一条未开始（status=0，列表 created_at DESC 首条）；否则无
+ */
+const pickCurrentPlan = (plans: Plan[]): Plan | null => {
+  if (!plans || plans.length === 0) return null
+  const active = plans.find(p => Number(p.status) === 1)
+  if (active) return active
+  const pending = plans.find(p => Number(p.status) === 0)
+  return pending || null
+}
+
+/**
  * 圈子详情页面
- * 显示圈子信息、状态标签、成员列表、当前计划、运动统计、归档/恢复控制
+ * 显示圈子信息、状态标签、成员列表、当前计划（三态）、运动统计、归档/恢复控制
  */
 const CircleDetail = () => {
   const router = useRouter()
@@ -56,7 +69,7 @@ const CircleDetail = () => {
       const [circleRes, membersRes, planRes, statsRes] = await Promise.allSettled([
         CircleService.getCircleDetail(circleId),
         CircleService.getCircleMembers(circleId),
-        CircleService.getCurrentPlan(circleId),
+        PlanService.getPlansByCircle(circleId),
         CircleService.getCircleStats(circleId)
       ])
 
@@ -70,9 +83,11 @@ const CircleDetail = () => {
         setMembers(membersRes.value.data || [])
       }
 
-      // 处理当前计划
+      // 处理当前计划（后端返回列表 created_at DESC；优先进行中 status=1，否则最新 status=0）
       if (planRes.status === 'fulfilled' && planRes.value.code === 200) {
-        setCurrentPlan(planRes.value.data)
+        const rawData: any = planRes.value.data
+        const plans = (Array.isArray(rawData) ? rawData : (rawData?.records || [])) as Plan[]
+        setCurrentPlan(pickCurrentPlan(plans))
       }
 
       // 处理统计信息
@@ -130,6 +145,37 @@ const CircleDetail = () => {
     Taro.navigateTo({
       url: `/pages/plan/detail/detail?planId=${plan.planId}`
     })
+  }
+
+  /**
+   * 跳转到计划编辑页（仅待启动计划 status=0）
+   */
+  const navigateToEditPlan = (plan: Plan) => {
+    Taro.navigateTo({
+      url: `/pages/plan/edit/edit?planId=${plan.planId}`
+    })
+  }
+
+  /**
+   * 启动待启动计划
+   */
+  const handleStartPlan = async (plan: Plan) => {
+    try {
+      Taro.showLoading({ title: '启动中...' })
+      await PlanService.startPlan(plan.planId)
+      Taro.hideLoading()
+      Taro.showToast({
+        title: '计划已启动',
+        icon: 'success'
+      })
+      loadData(false)
+    } catch (error) {
+      Taro.hideLoading()
+      Taro.showToast({
+        title: error.message || '启动失败，请重试',
+        icon: 'none'
+      })
+    }
   }
 
   /**
@@ -313,12 +359,6 @@ const CircleDetail = () => {
 
       {/* 操作按钮 */}
       <View className='action-buttons'>
-        {circleActive && isCreator() && !currentPlan && (
-          <View className='action-btn primary-btn' onClick={navigateToCreatePlan}>
-            <Text className='btn-icon'>🎯</Text>
-            <Text className='btn-text'>创建计划</Text>
-          </View>
-        )}
         {circleActive && (
           <View className='action-btn primary-btn' onClick={openCheckinPanel}>
             <Text className='btn-icon'>📸</Text>
@@ -356,16 +396,76 @@ const CircleDetail = () => {
         </View>
       )}
 
-      {/* 当前计划 */}
-      {currentPlan && (
-        <View className='plan-section'>
-          <Text className='section-title'>当前计划</Text>
-          <PlanProgressCard
-            plan={currentPlan}
-            onTap={() => navigateToPlanDetail(currentPlan)}
-          />
-        </View>
-      )}
+      {/* 当前计划区（三态：进行中/待启动/无计划） */}
+      <View className='plan-section'>
+        <Text className='section-title'>当前计划</Text>
+        {currentPlan ? (
+          Number(currentPlan.status) === 1 ? (
+            <PlanProgressCard
+              plan={currentPlan}
+              onTap={() => navigateToPlanDetail(currentPlan)}
+            />
+          ) : (
+            <View className='pending-plan-card'>
+              <View className='pending-plan-header'>
+                <View className='pending-plan-info'>
+                  <Text className='pending-plan-name'>{currentPlan.name}</Text>
+                  <View className='pending-tag'>
+                    <Text className='pending-tag-text'>待启动</Text>
+                  </View>
+                </View>
+                <Text className='pending-plan-dates'>
+                  {currentPlan.startDate} 至 {currentPlan.endDate}
+                </Text>
+              </View>
+              <View className='pending-plan-goals'>
+                <View className='pending-goal-item'>
+                  <Text className='pending-goal-label'>每日目标</Text>
+                  <Text className='pending-goal-value'>{currentPlan.dailyDurationGoal}分钟</Text>
+                </View>
+                <View className='pending-goal-item'>
+                  <Text className='pending-goal-label'>总目标</Text>
+                  <Text className='pending-goal-value'>{currentPlan.totalDurationGoal}分钟</Text>
+                </View>
+                <View className='pending-goal-item'>
+                  <Text className='pending-goal-label'>最低打卡</Text>
+                  <Text className='pending-goal-value'>{currentPlan.minDurationPerCheckin}分钟</Text>
+                </View>
+              </View>
+              <Text className='pending-plan-desc'>
+                {currentPlan.description || '系统生成的初始计划，可在编辑后启动'}
+              </Text>
+              {circleActive && isCreator() && (
+                <View className='pending-plan-actions'>
+                  <View
+                    className='pending-btn edit-btn'
+                    onClick={() => navigateToEditPlan(currentPlan)}
+                  >
+                    <Text className='pending-btn-text'>编辑计划</Text>
+                  </View>
+                  <View
+                    className='pending-btn start-btn'
+                    onClick={() => handleStartPlan(currentPlan)}
+                  >
+                    <Text className='pending-btn-text'>启动计划</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )
+        ) : (
+          <View className='no-plan-card'>
+            <Text className='no-plan-text'>
+              {isCreator() && circleActive ? '还没有计划，创建一个开始打卡吧' : '暂无计划'}
+            </Text>
+            {isCreator() && circleActive && (
+              <View className='no-plan-create-btn' onClick={navigateToCreatePlan}>
+                <Text className='no-plan-create-text'>创建计划</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
 
       {/* 成员列表 */}
       <View className='members-section'>

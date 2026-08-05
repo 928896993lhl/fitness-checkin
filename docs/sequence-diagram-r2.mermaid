@@ -1,0 +1,81 @@
+sequenceDiagram
+    autonumber
+    actor U as 用户
+    participant F as 前端
+    participant CC as CircleController
+    participant CS as CircleServiceImpl
+    participant PM as PlanMapper
+    participant CMM as CircleMemberMapper
+    participant CK as CheckinController
+    participant CKS as CheckinServiceImpl
+    participant BS as BadgeService
+    participant UBM as UserBadgeMapper
+    participant BC as BadgeController
+    participant PC as PlanController
+    participant PS as PlanServiceImpl
+    participant AC as AuthController
+    participant US as UserServiceImpl
+    participant DB as MySQL
+
+    Note over U,DB: ① 创建圈子 + 同事务初始计划
+    U->>F: 创建圈子(名称/简介/人数)
+    F->>CC: POST /circles
+    CC->>CS: createCircle(creatorId,name,desc,maxMembers)
+    CS->>DB: INSERT circles (status=1)
+    CS->>DB: INSERT circle_members (role=2 创建者)
+    CS->>PM: INSERT plans (初始计划固定值, status=0)
+    Note over CS,DB: 同一 @Transactional，任一步失败整体回滚
+    CS-->>CC: Circle
+    CC-->>F: Result.success(circle) (含 memberCount=1)
+
+    Note over U,DB: ② 打卡 + 徽章判定
+    U->>F: 宽松打卡面板提交
+    F->>CK: POST /checkin {planId?,circleId?,duration,exerciseType,...}
+    CK->>CKS: checkin(...)
+    CKS->>DB: INSERT checkin_records
+    CKS-->>CK: CheckinRecord
+    CK->>BS: checkAndUnlock(userId)  (Controller 编排，避免循环依赖)
+    BS->>CKS: getUserCheckinStatsMine(userId)
+    CKS-->>BS: stats (含 longestStreak/exerciseTypeBreakdown)
+    BS->>BS: 遍历 BadgeCode 判定未解锁徽章
+    BS->>UBM: selectByUserId(userId) 已有徽章
+    BS->>UBM: insertIgnore(新解锁徽章)
+    BS-->>CK: [{code,name,icon}]
+    CK->>CK: record.setNewlyUnlockedBadges(list)
+    CK-->>F: Result.success(record) (data.newlyUnlockedBadges)
+    F->>F: 含 first_checkin → showModal 庆祝；否则 toast 解锁徽章
+
+    Note over U,DB: ③ 运动生涯页数据加载
+    U->>F: 我的 → 运动生涯
+    F->>CKS: GET /checkin/stats/mine (经 CheckinController)
+    CKS-->>F: {todayDuration,totalDuration,checkinDays,totalCheckins,currentStreak,completionRate,longestStreak,exerciseTypeBreakdown}
+    F->>CKS: GET /checkin/heatmap/mine?days=365
+    CKS-->>F: {startDate,endDate,days:[{date,minutes,count}]}
+    F->>BC: GET /badges/mine
+    BC->>BS: getMyBadges(userId)
+    BS->>CKS: getUserCheckinStatsMine(userId)
+    BS->>UBM: selectByUserId(userId)
+    BS-->>F: [{code,name,icon,conditionText,unlocked,unlockedAt?,progressText}] ×8
+    F->>F: 渲染 4宫格 + Heatmap + 次级指标 + 类型分布 + BadgeWall
+
+    Note over U,DB: ④ 个人资料修改（头像/昵称）
+    U->>F: 点头像 → ActionSheet(拍照/相册)
+    F->>F: chooseImage → compressImage
+    F->>DB: uploadFile(name='file') → {url}
+    F->>AC: PUT /auth/userinfo {avatarUrl}
+    AC->>US: updateUser(userId,null,avatarUrl)
+    US->>DB: UPDATE users SET avatar_url
+    US-->>AC: User
+    AC-->>F: Result.success({userId,openid,nickname,avatarUrl,createdAt})
+    F->>F: updateUser(context+storage)
+
+    Note over U,DB: ⑤ 计划编辑（初始计划）
+    U->>F: 圈子详情 → 待启动计划卡 → 编辑
+    F->>PC: GET /plans/{planId} (预填)
+    PC-->>F: Plan (status=0)
+    F->>PC: PUT /plans/{planId} (部分字段)
+    PC->>PS: updatePlan(planId,userId,req)
+    PS->>PS: 校验 isCircleAdmin(role>=1) + status==0
+    PS->>DB: UPDATE plans
+    PS-->>F: Plan (更新后)
+    F->>F: navigateBack + 刷新圈子详情

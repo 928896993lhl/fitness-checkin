@@ -89,6 +89,16 @@ CREATE TABLE IF NOT EXISTS `checkin_records` (
     FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='打卡记录表';
 
+-- 用户徽章解锁记录表（复合主键 user_id + badge_code）
+CREATE TABLE IF NOT EXISTS `user_badges` (
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `badge_code` VARCHAR(50) NOT NULL COMMENT '徽章编码（对应 BadgeCode.code）',
+    `unlocked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '解锁时间',
+    PRIMARY KEY (`user_id`, `badge_code`),
+    INDEX `idx_badge_code` (`badge_code`),
+    CONSTRAINT `fk_user_badges_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户徽章解锁记录表';
+
 -- 插入测试数据（可选）
 -- INSERT INTO `users` (`openid`, `nickname`, `avatar_url`) VALUES 
 -- ('test_openid_1', '测试用户1', 'https://example.com/avatar1.jpg'),

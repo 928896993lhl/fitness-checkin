@@ -207,6 +207,151 @@
   }
 }
 
+/* 待启动计划卡（status=0） */
+.pending-plan-card {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  border: 2rpx solid #fbbf24;
+  
+  .pending-plan-header {
+    margin-bottom: 24rpx;
+    
+    .pending-plan-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8rpx;
+      
+      .pending-plan-name {
+        font-size: 32rpx;
+        font-weight: bold;
+        color: #333;
+        margin-right: 16rpx;
+      }
+      
+      .pending-tag {
+        background-color: #fef3c7;
+        border-radius: 16rpx;
+        padding: 4rpx 16rpx;
+        
+        .pending-tag-text {
+          font-size: 22rpx;
+          color: #92400e;
+        }
+      }
+    }
+    
+    .pending-plan-dates {
+      font-size: 24rpx;
+      color: #666;
+    }
+  }
+  
+  .pending-plan-goals {
+    display: flex;
+    gap: 20rpx;
+    margin-bottom: 20rpx;
+    
+    .pending-goal-item {
+      flex: 1;
+      background-color: #f9fafb;
+      border-radius: 12rpx;
+      padding: 16rpx;
+      text-align: center;
+      
+      .pending-goal-label {
+        font-size: 22rpx;
+        color: #666;
+        display: block;
+        margin-bottom: 8rpx;
+      }
+      
+      .pending-goal-value {
+        font-size: 28rpx;
+        font-weight: bold;
+        color: #333;
+      }
+    }
+  }
+  
+  .pending-plan-desc {
+    font-size: 24rpx;
+    color: #999;
+    display: block;
+    margin-bottom: 24rpx;
+    line-height: 1.6;
+  }
+  
+  .pending-plan-actions {
+    display: flex;
+    gap: 20rpx;
+    
+    .pending-btn {
+      flex: 1;
+      height: 80rpx;
+      border-radius: 40rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      .pending-btn-text {
+        font-size: 28rpx;
+        font-weight: 500;
+      }
+      
+      &.edit-btn {
+        background-color: #fff;
+        border: 2rpx solid #3b82f6;
+        
+        .pending-btn-text {
+          color: #3b82f6;
+        }
+      }
+      
+      &.start-btn {
+        background-color: #3b82f6;
+        
+        .pending-btn-text {
+          color: #fff;
+        }
+      }
+    }
+  }
+}
+
+/* 无计划卡（方案C兜底） */
+.no-plan-card {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 40rpx 30rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  .no-plan-text {
+    font-size: 26rpx;
+    color: #999;
+    margin-bottom: 24rpx;
+    text-align: center;
+  }
+  
+  .no-plan-create-btn {
+    height: 80rpx;
+    padding: 0 60rpx;
+    background-color: #3b82f6;
+    border-radius: 40rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .no-plan-create-text {
+      font-size: 28rpx;
+      color: #fff;
+      font-weight: 500;
+    }
+  }
+}
+
 .members-section {
   background-color: #fff;
   margin: 0 30rpx 30rpx;

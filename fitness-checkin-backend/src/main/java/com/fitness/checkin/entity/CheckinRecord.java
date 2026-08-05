@@ -10,6 +10,8 @@ import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 打卡记录实体类
@@ -76,4 +78,11 @@ public class CheckinRecord implements Serializable {
      */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
+
+    /**
+     * 本次打卡新解锁的徽章列表（瞬态字段，不入库；由 CheckinController 编排 BadgeService 填充）
+     * 元素结构：{code, name, icon}
+     */
+    @TableField(exist = false)
+    private List<Map<String, Object>> newlyUnlockedBadges;
 }

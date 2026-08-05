@@ -1,5 +1,6 @@
 package com.fitness.checkin.dto;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -28,8 +29,9 @@ public class CreateCircleRequest {
     private String description;
 
     /**
-     * 最大成员数
+     * 最大成员数（2-50）
      */
     @Min(value = 2, message = "最大成员数不能小于2")
+    @Max(value = 50, message = "最大成员数不能超过50")
     private Integer maxMembers = 50;
 }

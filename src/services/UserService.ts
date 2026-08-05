@@ -1,5 +1,5 @@
 import { request } from '../utils/request'
-import { User, LoginResult, APIResponse } from '../types'
+import { User, LoginResult, UpdateUserInfoRequest, APIResponse } from '../types'
 
 /**
  * 用户服务类
@@ -33,18 +33,11 @@ export class UserService {
   }
 
   /**
-   * 更新用户信息
+   * 更新用户信息（部分字段：nickname / avatarUrl 至少一个；avatarUrl 空串清空头像）
    * @param userData 用户数据
-   * @returns 更新结果
+   * @returns 更新后的用户信息
    */
-  static async updateUserInfo(userData: {
-    nickname?: string
-    avatarUrl?: string
-    gender?: number
-    province?: string
-    city?: string
-    country?: string
-  }): Promise<APIResponse<User>> {
+  static async updateUserInfo(userData: UpdateUserInfoRequest): Promise<APIResponse<User>> {
     return request('/auth/userinfo', 'PUT', userData)
   }
 

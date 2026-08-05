@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, Input, Picker } from '@tarojs/components'
+import { View, Text, Input } from '@tarojs/components'
 import { CircleService } from '../../../services/CircleService'
-import { CIRCLE_RULES, SUCCESS_MESSAGES } from '../../../types/constants'
+import { CIRCLE_RULES, MEMBER_LIMIT_OPTIONS, SUCCESS_MESSAGES } from '../../../types/constants'
 import LoadingSpinner from '../../../components/common/LoadingSpinner'
 import './create.scss'
 
@@ -12,20 +12,14 @@ import './create.scss'
 const CreateCircle = () => {
   const [name, setName] = useState<string>('')
   const [description, setDescription] = useState<string>('')
-  const [maxMembers, setMaxMembers] = useState<number>(CIRCLE_RULES.MAX_MEMBERS)
+  const [maxMembers, setMaxMembers] = useState<number>(8)
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  // 成员数量选项
-  const memberRange = Array.from(
-    { length: CIRCLE_RULES.MAX_MEMBERS - CIRCLE_RULES.MIN_MEMBERS + 1 },
-    (_, i) => CIRCLE_RULES.MIN_MEMBERS + i
-  )
-
   /**
-   * 处理成员数量选择
+   * 选择人数档位
    */
-  const handleMemberChange = (e: any) => {
-    setMaxMembers(memberRange[e.detail.value])
+  const handleMemberSelect = (value: number) => {
+    setMaxMembers(value)
   }
 
   /**
@@ -146,17 +140,17 @@ const CreateCircle = () => {
         {/* 成员人数限制 */}
         <View className='form-item'>
           <Text className='form-label'>成员人数限制</Text>
-          <Picker
-            mode='selector'
-            range={memberRange.map(String)}
-            value={memberRange.indexOf(maxMembers)}
-            onChange={handleMemberChange}
-          >
-            <View className='picker-input'>
-              <Text className='picker-text'>{maxMembers} 人</Text>
-              <Text className='picker-arrow'>›</Text>
-            </View>
-          </Picker>
+          <View className='member-chips'>
+            {MEMBER_LIMIT_OPTIONS.map(option => (
+              <View
+                key={option}
+                className={`member-chip ${maxMembers === option ? 'active' : ''}`}
+                onClick={() => handleMemberSelect(option)}
+              >
+                <Text className='member-chip-text'>{option}人</Text>
+              </View>
+            ))}
+          </View>
           <Text className='form-hint'>
             建议设置为2-{CIRCLE_RULES.MAX_MEMBERS}人，成员加入后不可退出
           </Text>

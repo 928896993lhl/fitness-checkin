@@ -1,4 +1,4 @@
-.create-circle-page {
+.edit-plan-page {
   min-height: 100vh;
   background-color: #f5f5f5;
   padding-bottom: 200rpx;
@@ -8,6 +8,14 @@
   background-color: #fff;
   padding: 30rpx;
   margin-bottom: 20rpx;
+  
+  .section-title {
+    font-size: 30rpx;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 30rpx;
+    display: block;
+  }
   
   .form-item {
     margin-bottom: 40rpx;
@@ -37,11 +45,6 @@
       &.textarea {
         height: 160rpx;
         padding: 24rpx;
-      }
-      
-      &:focus {
-        border-color: #3b82f6;
-        background-color: #fff;
       }
     }
     
@@ -73,39 +76,6 @@
       margin-top: 12rpx;
       display: block;
     }
-
-    .member-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20rpx;
-
-      .member-chip {
-        min-width: 120rpx;
-        height: 72rpx;
-        padding: 0 24rpx;
-        border-radius: 36rpx;
-        background-color: #f9fafb;
-        border: 2rpx solid #e5e7eb;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        &.active {
-          background-color: #3b82f6;
-          border-color: #3b82f6;
-
-          .member-chip-text {
-            color: #fff;
-            font-weight: 500;
-          }
-        }
-
-        .member-chip-text {
-          font-size: 28rpx;
-          color: #333;
-        }
-      }
-    }
   }
 }
 
@@ -114,21 +84,10 @@
   padding: 30rpx;
   margin-bottom: 20rpx;
   
-  .tips-title {
-    font-size: 28rpx;
-    font-weight: 500;
-    color: #333;
-    margin-bottom: 20rpx;
-    display: block;
-  }
-  
-  .tips-list {
-    .tips-item {
-      font-size: 26rpx;
-      color: #666;
-      line-height: 1.8;
-      display: block;
-    }
+  .tips-text {
+    font-size: 24rpx;
+    color: #92400e;
+    line-height: 1.6;
   }
 }
 

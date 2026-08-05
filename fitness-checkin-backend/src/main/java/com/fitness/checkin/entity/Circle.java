@@ -72,4 +72,10 @@ public class Circle implements Serializable {
      * 状态：0-禁用，1-正常
      */
     private Integer status;
+
+    /**
+     * 成员数量（瞬态字段，不入库；用于圈子列表展示，避免前端逐圈请求）
+     */
+    @TableField(exist = false)
+    private Integer memberCount;
 }

@@ -75,11 +75,13 @@ export interface Circle {
   name: string
   description: string
   creatorId: ID
-  maxMembers: number // 2-8人
+  maxMembers: number // 2-50人
   inviteCode: string
   status: CircleStatus
   createdAt: Timestamp
   updatedAt: Timestamp
+  // 联合查询字段（非数据库字段，圈子列表接口返回）
+  memberCount?: number
 }
 
 /** 圈子成员关系 */
@@ -128,6 +130,8 @@ export interface CheckinRecord {
   // 联合查询字段（非数据库字段）
   user?: User
   plan?: Plan
+  // 本次打卡新解锁徽章（POST /checkin 成功后由后端填充，向后兼容）
+  newlyUnlockedBadges?: NewlyUnlockedBadge[]
 }
 
 // ==================== 请求/响应类型 ====================
@@ -176,6 +180,24 @@ export interface CreateCheckinRequest {
   remark?: string
 }
 
+/** 更新用户信息请求（至少一个字段；avatarUrl 传空字符串表示清空头像） */
+export interface UpdateUserInfoRequest {
+  nickname?: string
+  avatarUrl?: string
+}
+
+/** 更新计划请求（同 CreatePlanRequest 去掉 circleId，全部可选，至少一个字段） */
+export interface UpdatePlanRequest {
+  name?: string
+  description?: string
+  startDate?: string
+  endDate?: string
+  totalDurationGoal?: number
+  dailyDurationGoal?: number
+  circleTotalGoal?: number
+  minDurationPerCheckin?: number
+}
+
 /** 查询圈子列表请求 */
 export interface GetCirclesRequest {
   page?: number
@@ -212,6 +234,48 @@ export interface UserExerciseStats {
   totalCheckins: number // 总打卡次数
   currentStreak: number // 当前连续打卡天数
   completionRate: number // 计划完成率（0-100，仅进行中计划）
+  // 扩展（本轮新增）
+  longestStreak: number // 历史最长连续打卡天数
+  exerciseTypeBreakdown: ExerciseTypeBreakdownItem[] // 运动类型分布
+  estimatedDistanceKm: number // 估算总里程（公里）
+}
+
+/** 运动类型分布条目 */
+export interface ExerciseTypeBreakdownItem {
+  type: string // 运动类型编码（running/walking/...）
+  duration: number // 该类运动累计时长（分钟）
+}
+
+/** 徽章信息（对齐 GET /badges/mine，8 条固定顺序） */
+export interface BadgeInfo {
+  code: string
+  name: string
+  icon: string
+  conditionText: string
+  unlocked: boolean
+  unlockedAt?: Timestamp | null
+  progressText: string
+}
+
+/** 本次打卡新解锁徽章（POST /checkin 响应瞬态字段元素） */
+export interface NewlyUnlockedBadge {
+  code: string
+  name: string
+  icon: string
+}
+
+/** 热力图单日数据 */
+export interface HeatmapDay {
+  date: string // YYYY-MM-DD
+  minutes: number // 当日总运动时长
+  count: number // 当日打卡次数
+}
+
+/** 热力图数据（对齐 GET /checkin/heatmap/mine） */
+export interface HeatmapData {
+  startDate: string // YYYY-MM-DD
+  endDate: string // YYYY-MM-DD
+  days: HeatmapDay[] // 仅含有打卡记录的日期
 }
 
 /** 圈子运动统计 */

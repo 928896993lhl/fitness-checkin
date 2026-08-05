@@ -1,7 +1,9 @@
 package com.fitness.checkin.controller;
 
+import com.fitness.checkin.common.BusinessException;
 import com.fitness.checkin.common.Result;
 import com.fitness.checkin.dto.CreatePlanRequest;
+import com.fitness.checkin.dto.UpdatePlanRequest;
 import com.fitness.checkin.entity.Plan;
 import com.fitness.checkin.entity.User;
 import com.fitness.checkin.service.PlanService;
@@ -75,6 +77,27 @@ public class PlanController {
             return Result.success(plan);
         } catch (Exception e) {
             logger.error("启动计划失败: {}", e.getMessage());
+            return Result.error(500, e.getMessage());
+        }
+    }
+
+    /**
+     * 更新计划（部分字段）
+     * 仅圈子管理员且仅 status=0 的计划可修改；业务异常以 Result.code（400/403）返回
+     */
+    @PutMapping("/{planId}")
+    public Result<?> updatePlan(@PathVariable Long planId,
+                                @Valid @RequestBody UpdatePlanRequest request,
+                                @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = getCurrentUser(userDetails);
+            Plan plan = planService.updatePlan(planId, user.getUserId(), request);
+            return Result.success(plan);
+        } catch (BusinessException e) {
+            logger.warn("更新计划失败: {} - {}", planId, e.getMessage());
+            return Result.error(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            logger.error("更新计划失败: {}", e.getMessage());
             return Result.error(500, e.getMessage());
         }
     }

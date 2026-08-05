@@ -230,6 +230,25 @@ const LooseCheckinPanel: React.FC<LooseCheckinPanelProps> = ({
           icon: 'success'
         })
 
+        // 徽章反馈：含 first_checkin → 庆祝弹窗；否则 toast 解锁提示
+        const newlyUnlocked = result.data?.newlyUnlockedBadges
+        if (newlyUnlocked && newlyUnlocked.length > 0) {
+          const hasFirstCheckin = newlyUnlocked.some(b => b.code === 'first_checkin')
+          if (hasFirstCheckin) {
+            Taro.showModal({
+              title: '🎉 解锁首枚徽章',
+              content: `「${newlyUnlocked[0]?.name || '初次打卡'}」已解锁，继续坚持解锁更多成就！`,
+              showCancel: false,
+              confirmText: '太棒了'
+            })
+          } else {
+            Taro.showToast({
+              title: `🎉 解锁徽章：${newlyUnlocked[0]?.name || ''}`,
+              icon: 'none'
+            })
+          }
+        }
+
         // 获取今日累计并展示结果摘要
         try {
           const statsRes = await CheckinService.getUserStats()

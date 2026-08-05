@@ -140,7 +140,7 @@ const CircleList = () => {
               key={circle.circleId}
               circle={circle}
               onTap={goToDetail}
-              memberCount={0}
+              memberCount={circle.memberCount}
             />
           ))
         ) : (

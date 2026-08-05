@@ -55,7 +55,8 @@ public interface CheckinService {
      * 获取我的打卡统计（用户维度，跨计划/宽松打卡）
      * 
      * @param userId 用户ID
-     * @return {todayDuration, totalDuration, checkinDays, totalCheckins, currentStreak, completionRate}
+     * @return {todayDuration, totalDuration, checkinDays, totalCheckins, currentStreak, completionRate,
+     *          longestStreak, exerciseTypeBreakdown, estimatedDistanceKm}
      */
     Map<String, Object> getUserCheckinStatsMine(Long userId);
 
@@ -110,4 +111,13 @@ public interface CheckinService {
      * @return 是否已打卡
      */
     boolean hasCheckedInToday(Long planId, Long userId);
+
+    /**
+     * 获取我的活跃度热力图（用户维度，按天聚合）
+     * 
+     * @param userId 用户ID
+     * @param days   天数（默认365，下限7，上限365，超界截断）
+     * @return {startDate, endDate, days:[{date, minutes, count}]}（days 仅含有打卡记录的日期）
+     */
+    Map<String, Object> getHeatmapMine(Long userId, int days);
 }

@@ -2,27 +2,45 @@ import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useUserState, useUserDispatch } from '../../context/UserContext'
+import { UserService } from '../../services/UserService'
+import { CheckinService } from '../../services/CheckinService'
+import { BadgeService } from '../../services/BadgeService'
+import { BadgeInfo } from '../../types'
+import { PAGE_PATHS, REGEX_PATTERNS } from '../../types/constants'
+import { compressImage, chooseImage } from '../../utils/imageUtils'
+import BadgeWall from '../../components/badge/BadgeWall'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import './profile.scss'
 
 /**
- * 个人中心页面（精简版）
- * 保留用户信息卡、运动历史入口、设置入口、退出登录
+ * 个人中心页面
+ * 用户信息卡（头像/昵称可编辑）、徽章墙、运动历史/运动生涯/设置入口、退出登录
  */
 const Profile = () => {
   const { user, isLoggedIn } = useUserState()
-  const { logout } = useUserDispatch()
+  const { updateUser, logout } = useUserDispatch()
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [badges, setBadges] = useState<BadgeInfo[]>([])
 
   /**
-   * 加载个人中心数据
+   * 加载个人中心数据（徽章墙）
    */
   const loadData = async () => {
     if (!isLoggedIn) {
       setIsLoading(false)
       return
     }
-    setIsLoading(false)
+    try {
+      const res = await BadgeService.getMyBadges()
+      if (res.code === 200) {
+        setBadges(Array.isArray(res.data) ? res.data : [])
+      }
+    } catch (error) {
+      console.error('加载徽章失败:', error)
+      setBadges([])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   /**
@@ -51,11 +69,114 @@ const Profile = () => {
   }
 
   /**
+   * 跳转到运动生涯页
+   */
+  const navigateToCareer = () => {
+    Taro.navigateTo({
+      url: PAGE_PATHS.PROFILE_CAREER
+    })
+  }
+
+  /**
    * 跳转到设置页
    */
   const navigateToSettings = () => {
     Taro.navigateTo({
       url: '/pages/profile/settings/settings'
+    })
+  }
+
+  /**
+   * 更新头像：ActionSheet 选择来源 → 选图 → 压缩 → 上传 → 更新用户信息
+   */
+  const handleAvatarTap = () => {
+    Taro.showActionSheet({
+      itemList: ['拍照', '从相册选择'],
+      success: async (res) => {
+        try {
+          const sourceType: ('camera' | 'album')[] = res.tapIndex === 0 ? ['camera'] : ['album']
+          const paths = await chooseImage(1, ['compressed'], sourceType)
+          if (!paths || paths.length === 0) return
+
+          Taro.showLoading({ title: '上传头像中...' })
+          const compressed = await compressImage(paths[0], 80, 512, 512)
+          const uploadRes = await CheckinService.uploadPhoto(compressed)
+          if (uploadRes.code !== 200) {
+            Taro.hideLoading()
+            throw new Error('头像上传失败')
+          }
+
+          const avatarUrl = uploadRes.data.url
+          const updateRes = await UserService.updateUserInfo({ avatarUrl })
+          Taro.hideLoading()
+
+          if (updateRes.code === 200 && updateRes.data) {
+            updateUser(updateRes.data)
+            Taro.showToast({
+              title: '头像已更新',
+              icon: 'success'
+            })
+          } else {
+            throw new Error(updateRes.message || '更新失败')
+          }
+        } catch (error) {
+          Taro.hideLoading()
+          console.error('更新头像失败:', error)
+          Taro.showToast({
+            title: error.message || '头像更新失败，请重试',
+            icon: 'none'
+          })
+        }
+      },
+      fail: () => {
+        // 用户取消选择，忽略
+      }
+    })
+  }
+
+  /**
+   * 编辑昵称：showModal editable → 2-20 校验 → 更新用户信息
+   */
+  const handleNicknameTap = () => {
+    Taro.showModal({
+      title: '修改昵称',
+      editable: true,
+      placeholderText: '请输入昵称（2-20个字符）',
+      content: '',
+      success: async (res) => {
+        if (!res.confirm) return
+        const nickname = (res.content || '').trim()
+        if (!nickname) {
+          Taro.showToast({ title: '昵称不能为空', icon: 'none' })
+          return
+        }
+        if (nickname.length < 2 || nickname.length > 20) {
+          Taro.showToast({ title: '昵称长度为2-20个字符', icon: 'none' })
+          return
+        }
+        if (!REGEX_PATTERNS.NICKNAME.test(nickname)) {
+          Taro.showToast({ title: '昵称仅支持中英文、数字和下划线', icon: 'none' })
+          return
+        }
+        try {
+          const updateRes = await UserService.updateUserInfo({ nickname })
+          if (updateRes.code === 200 && updateRes.data) {
+            updateUser(updateRes.data)
+            Taro.showToast({
+              title: '昵称已更新',
+              icon: 'success'
+            })
+          } else {
+            throw new Error(updateRes.message || '更新失败')
+          }
+        } catch (error) {
+          console.error('更新昵称失败:', error)
+          Taro.showToast({
+            title: error.message || '昵称更新失败，请重试',
+            icon: 'none'
+          })
+        }
+      }
     })
   }
 
@@ -113,7 +234,7 @@ const Profile = () => {
       {/* 用户信息卡片 */}
       <View className='user-card'>
         <View className='user-header'>
-          <View className='user-avatar'>
+          <View className='user-avatar' onClick={handleAvatarTap}>
             {user?.avatarUrl ? (
               <Image className='avatar-image' src={user.avatarUrl} mode='aspectFill' />
             ) : (
@@ -123,17 +244,39 @@ const Profile = () => {
             )}
           </View>
           <View className='user-info'>
-            <Text className='user-name'>{user?.nickname || '健身达人'}</Text>
+            <View className='user-name-row' onClick={handleNicknameTap}>
+              <Text className='user-name'>{user?.nickname || '健身达人'}</Text>
+              <Text className='user-edit-icon'>✏️</Text>
+            </View>
             <Text className='user-id'>ID: {user?.openid?.slice(-6) || '------'}</Text>
+            <Text className='user-hint'>点击头像/昵称可修改</Text>
           </View>
         </View>
       </View>
+
+      {/* 徽章墙（前6个 + 查看全部） */}
+      {badges.length > 0 && (
+        <View className='badges-section'>
+          <View className='badges-header'>
+            <Text className='badges-title'>我的徽章</Text>
+            <View className='badges-more' onClick={navigateToCareer}>
+              <Text className='badges-more-text'>查看全部 ›</Text>
+            </View>
+          </View>
+          <BadgeWall badges={badges} limit={6} />
+        </View>
+      )}
 
       {/* 功能菜单 */}
       <View className='menu-section'>
         <View className='menu-item' onClick={navigateToHistory}>
           <Text className='menu-icon'>📋</Text>
           <Text className='menu-text'>运动历史</Text>
+          <Text className='menu-arrow'>›</Text>
+        </View>
+        <View className='menu-item' onClick={navigateToCareer}>
+          <Text className='menu-icon'>🏆</Text>
+          <Text className='menu-text'>运动生涯</Text>
           <Text className='menu-arrow'>›</Text>
         </View>
         <View className='menu-item' onClick={navigateToSettings}>

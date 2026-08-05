@@ -5,6 +5,7 @@ import com.fitness.checkin.common.Result;
 import com.fitness.checkin.dto.CheckinRequest;
 import com.fitness.checkin.entity.CheckinRecord;
 import com.fitness.checkin.entity.User;
+import com.fitness.checkin.service.BadgeService;
 import com.fitness.checkin.service.CheckinService;
 import com.fitness.checkin.service.UserService;
 import com.fitness.checkin.service.PlanService;
@@ -32,15 +33,19 @@ public class CheckinController {
     private final CheckinService checkinService;
     private final UserService userService;
     private final PlanService planService;
+    private final BadgeService badgeService;
 
-    public CheckinController(CheckinService checkinService, UserService userService, PlanService planService) {
+    public CheckinController(CheckinService checkinService, UserService userService,
+                             PlanService planService, BadgeService badgeService) {
         this.checkinService = checkinService;
         this.userService = userService;
         this.planService = planService;
+        this.badgeService = badgeService;
     }
 
     /**
      * 用户打卡（宽松打卡：planId/circleId 均可空）
+     * 打卡成功后由 Controller 编排徽章判定（避免 CheckinService↔BadgeService 循环依赖）
      */
     @PostMapping
     public Result<?> checkin(@Valid @RequestBody CheckinRequest request,
@@ -56,10 +61,42 @@ public class CheckinController {
                     request.getPhotoUrl(),
                     request.getRemark()
             );
+
+            // 徽章判定：先取统计（含本次打卡），再 checkAndUnlock，结果挂到记录瞬态字段
+            // 徽章异常不影响打卡主流程，降级为空列表
+            try {
+                Map<String, Object> stats = checkinService.getUserCheckinStatsMine(user.getUserId());
+                List<Map<String, Object>> newlyUnlocked = badgeService.checkAndUnlock(user.getUserId(), stats);
+                record.setNewlyUnlockedBadges(newlyUnlocked != null ? newlyUnlocked : new ArrayList<>());
+            } catch (Exception badgeEx) {
+                logger.warn("徽章判定失败，忽略: {}", badgeEx.getMessage());
+                record.setNewlyUnlockedBadges(new ArrayList<>());
+            }
+
             return Result.success(record);
         } catch (Exception e) {
             logger.error("打卡失败: {}", e.getMessage());
             return Result.error(500, e.getMessage());
+        }
+    }
+
+    /**
+     * 获取我的活跃度热力图（按天聚合）
+     */
+    @GetMapping("/heatmap/mine")
+    public Result<?> getHeatmapMine(@RequestParam(defaultValue = "365") int days,
+                                    @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = getCurrentUser(userDetails);
+            Map<String, Object> data = checkinService.getHeatmapMine(user.getUserId(), days);
+            return Result.success(data);
+        } catch (Exception e) {
+            logger.warn("查询热力图失败，返回空数据: {}", e.getMessage());
+            Map<String, Object> emptyData = new HashMap<>();
+            emptyData.put("startDate", LocalDate.now().toString());
+            emptyData.put("endDate", LocalDate.now().toString());
+            emptyData.put("days", new ArrayList<>());
+            return Result.success(emptyData);
         }
     }
 

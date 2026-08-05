@@ -71,10 +71,13 @@ public class UserServiceImpl implements UserService {
     public User updateUser(Long userId, String nickname, String avatarUrl) {
         User user = getUserById(userId);
 
-        if (nickname != null && !nickname.isEmpty()) {
+        // 空串判断改为 null 判断：
+        // nickname 空串由 DTO @Size(2,20) 拦截，不会误放行；
+        // avatarUrl 空串用于清空头像（需求：头像可清除）
+        if (nickname != null) {
             user.setNickname(nickname);
         }
-        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+        if (avatarUrl != null) {
             user.setAvatarUrl(avatarUrl);
         }
         user.setUpdatedAt(LocalDateTime.now());

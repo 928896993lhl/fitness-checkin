@@ -3,6 +3,7 @@ package com.fitness.checkin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fitness.checkin.common.BusinessException;
+import com.fitness.checkin.constant.BadgeCode;
 import com.fitness.checkin.entity.CheckinRecord;
 import com.fitness.checkin.entity.Circle;
 import com.fitness.checkin.entity.Plan;
@@ -19,6 +20,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -176,7 +179,39 @@ public class CheckinServiceImpl implements CheckinService {
         stats.put("totalCheckins", checkinRecordMapper.selectTotalCheckinsByUserId(userId));
         stats.put("currentStreak", calcCurrentStreak(userId));
         stats.put("completionRate", calcCompletionRate(userId));
+
+        // 扩展：历史最长连续 + 运动类型分布 + 里程估算（徽章判定与运动生涯页共用口径）
+        stats.put("longestStreak", calcLongestStreak(userId));
+        List<Map<String, Object>> exerciseTypeBreakdown =
+                checkinRecordMapper.selectExerciseTypeBreakdownByUserId(userId);
+        stats.put("exerciseTypeBreakdown",
+                exerciseTypeBreakdown != null ? exerciseTypeBreakdown : new ArrayList<>());
+        stats.put("estimatedDistanceKm", BadgeCode.estimateDistanceKm(exerciseTypeBreakdown));
+
         return stats;
+    }
+
+    @Override
+    public Map<String, Object> getHeatmapMine(Long userId, int days) {
+        // 天数截断：默认 365，下限 7，上限 365
+        if (days < 7) {
+            days = 7;
+        }
+        if (days > 365) {
+            days = 365;
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(days - 1);
+
+        List<Map<String, Object>> dayRows =
+                checkinRecordMapper.selectHeatmapByUserId(userId, startDate.atStartOfDay());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("startDate", startDate.toString());
+        result.put("endDate", today.toString());
+        result.put("days", dayRows != null ? dayRows : new ArrayList<>());
+        return result;
     }
 
     @Override
@@ -286,6 +321,48 @@ public class CheckinServiceImpl implements CheckinService {
             cursor = cursor.minusDays(1);
         }
         return streak;
+    }
+
+    /**
+     * 计算历史最长连续打卡天数
+     * 规则：对全部去重打卡日期排序后，统计最长的连续（相邻日）天数
+     *
+     * @param userId 用户ID
+     * @return 历史最长连续打卡天数
+     */
+    private int calcLongestStreak(Long userId) {
+        List<String> dateStrs = checkinRecordMapper.selectDistinctCheckinDatesByUserId(userId);
+        if (dateStrs == null || dateStrs.isEmpty()) {
+            return 0;
+        }
+
+        Set<LocalDate> dates = new HashSet<>();
+        for (String dateStr : dateStrs) {
+            try {
+                dates.add(LocalDate.parse(dateStr));
+            } catch (DateTimeParseException ignored) {
+                // 忽略无法解析的日期
+            }
+        }
+
+        List<LocalDate> sortedDates = new ArrayList<>(dates);
+        Collections.sort(sortedDates);
+
+        int longest = 0;
+        int current = 0;
+        LocalDate prev = null;
+        for (LocalDate date : sortedDates) {
+            if (prev != null && date.equals(prev.plusDays(1))) {
+                current++;
+            } else {
+                current = 1;
+            }
+            if (current > longest) {
+                longest = current;
+            }
+            prev = date;
+        }
+        return longest;
     }
 
     /**

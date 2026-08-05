@@ -1,0 +1,93 @@
+.heatmap {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx 24rpx;
+
+  &.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60rpx 24rpx;
+
+    .heatmap-empty-text {
+      font-size: 26rpx;
+      color: #999;
+    }
+  }
+
+  .heatmap-scroll {
+    width: 100%;
+    white-space: nowrap;
+  }
+
+  .heatmap-inner {
+    display: inline-flex;
+    flex-direction: column;
+  }
+
+  .heatmap-week-labels {
+    display: flex;
+    margin-bottom: 8rpx;
+
+    .week-label-cell {
+      width: 22rpx;
+      height: 22rpx;
+      margin-right: 4rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .week-label-text {
+        font-size: 16rpx;
+        color: #999;
+      }
+    }
+  }
+
+  .heatmap-grid {
+    display: flex;
+  }
+
+  .heatmap-column {
+    display: flex;
+    flex-direction: column;
+    margin-right: 4rpx;
+  }
+
+  .heatmap-cell {
+    width: 22rpx;
+    height: 22rpx;
+    border-radius: 4rpx;
+    margin-bottom: 4rpx;
+    box-sizing: border-box;
+
+    &.placeholder {
+      background-color: transparent;
+    }
+
+    &.today {
+      border: 2rpx solid #3b82f6;
+      box-sizing: border-box;
+    }
+  }
+
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 16rpx;
+
+    .legend-label {
+      font-size: 20rpx;
+      color: #999;
+      margin: 0 8rpx;
+    }
+
+    .legend-cell {
+      width: 22rpx;
+      height: 22rpx;
+      border-radius: 4rpx;
+      margin: 0 4rpx;
+    }
+  }
+}

@@ -3,6 +3,7 @@ import {
   Plan,
   PlanProgress,
   CreatePlanRequest,
+  UpdatePlanRequest,
   GetPlansRequest,
   APIResponse,
   PaginatedResult
@@ -14,6 +15,15 @@ import {
 export class PlanService {
   static async createPlan(planData: CreatePlanRequest): Promise<APIResponse<Plan>> {
     return request('/plans', 'POST', planData)
+  }
+
+  /**
+   * 更新计划（部分字段：仅圈子管理员且仅 status=0 可改）
+   * @param planId 计划ID
+   * @param data   部分字段（至少一个）
+   */
+  static async updatePlan(planId: string, data: UpdatePlanRequest): Promise<APIResponse<Plan>> {
+    return request(`/plans/${planId}`, 'PUT', data)
   }
 
   static async getPlansByCircle(circleId: string, params: GetPlansRequest = {}): Promise<APIResponse<PaginatedResult<Plan>>> {

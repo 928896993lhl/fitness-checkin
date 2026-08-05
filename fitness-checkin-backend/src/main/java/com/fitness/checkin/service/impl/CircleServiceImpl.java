@@ -3,9 +3,11 @@ package com.fitness.checkin.service.impl;
 import com.fitness.checkin.common.BusinessException;
 import com.fitness.checkin.entity.Circle;
 import com.fitness.checkin.entity.CircleMember;
+import com.fitness.checkin.entity.Plan;
 import com.fitness.checkin.entity.User;
 import com.fitness.checkin.mapper.CircleMapper;
 import com.fitness.checkin.mapper.CircleMemberMapper;
+import com.fitness.checkin.mapper.PlanMapper;
 import com.fitness.checkin.service.CircleService;
 import com.fitness.checkin.service.UserService;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -14,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -33,13 +36,16 @@ public class CircleServiceImpl implements CircleService {
 
     private final CircleMapper circleMapper;
     private final CircleMemberMapper circleMemberMapper;
+    private final PlanMapper planMapper;
     private final UserService userService;
 
     public CircleServiceImpl(CircleMapper circleMapper, 
                            CircleMemberMapper circleMemberMapper,
+                           PlanMapper planMapper,
                            UserService userService) {
         this.circleMapper = circleMapper;
         this.circleMemberMapper = circleMemberMapper;
+        this.planMapper = planMapper;
         this.userService = userService;
     }
 
@@ -75,7 +81,40 @@ public class CircleServiceImpl implements CircleService {
         circleMemberMapper.insert(creatorMember);
         logger.info("创建者 {} 加入圈子 {}", creatorId, circle.getCircleId());
 
+        // 同事务生成初始计划（类级 @Transactional：圈子/成员/初始计划三插入同事务）
+        // 直插 PlanMapper，避免注入 PlanService 造成 CircleService↔PlanService 循环引用（Boot 3 默认禁止）
+        planMapper.insert(buildInitialPlan(circle));
+        logger.info("圈子 {} 已生成初始计划", circle.getCircleId());
+
+        // 创建者本人即圈子当前唯一成员
+        circle.setMemberCount(1);
+
         return circle;
+    }
+
+    /**
+     * 构建圈子初始计划（固定值，唯一来源）
+     * name=`{圈子名} · 7天挑战`、startDate=当天、endDate=+6天、status=0
+     *
+     * @param circle 圈子实体（须已生成 circleId）
+     * @return 初始计划实体
+     */
+    private Plan buildInitialPlan(Circle circle) {
+        LocalDate today = LocalDate.now();
+        Plan plan = new Plan();
+        plan.setCircleId(circle.getCircleId());
+        plan.setName(circle.getName() + " · 7天挑战");
+        plan.setDescription("系统生成的初始计划，可在圈子详情中调整后启动");
+        plan.setStartDate(today);
+        plan.setEndDate(today.plusDays(6));
+        plan.setTotalDurationGoal(210);
+        plan.setDailyDurationGoal(30);
+        plan.setCircleTotalGoal(420);
+        plan.setMinDurationPerCheckin(10);
+        plan.setStatus(0); // 0-未开始
+        plan.setCreatedAt(LocalDateTime.now());
+        plan.setUpdatedAt(LocalDateTime.now());
+        return plan;
     }
 
     @Override
@@ -192,7 +231,14 @@ public class CircleServiceImpl implements CircleService {
         }
 
         // 查询圈子信息
-        return circleMapper.selectBatchIds(circleIds);
+        List<Circle> circles = circleMapper.selectBatchIds(circleIds);
+
+        // 附加成员数量（瞬态字段），避免前端逐圈请求造成 N+1
+        for (Circle circle : circles) {
+            circle.setMemberCount(circleMemberMapper.countByCircleId(circle.getCircleId()));
+        }
+
+        return circles;
     }
 
     @Override

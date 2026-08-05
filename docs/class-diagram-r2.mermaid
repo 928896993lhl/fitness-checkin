@@ -1,0 +1,140 @@
+classDiagram
+    %% ============ 徽章模块（新增） ============
+    class BadgeCode {
+        <<enumeration>>
+        FIRST_CHECKIN
+        DAYS_7
+        DAYS_30
+        DAYS_100
+        MINUTES_1000
+        STREAK_7
+        STREAK_30
+        DISTANCE_50
+        +String code
+        +String name
+        +String icon
+        +String conditionText
+        +boolean isUnlocked(Map stats)
+        +String progressText(Map stats)
+    }
+    class UserBadge {
+        +Long userId
+        +String badgeCode
+        +LocalDateTime unlockedAt
+    }
+    class UserBadgeMapper {
+        +List~UserBadge~ selectByUserId(Long userId)
+        +int insertIgnore(Long userId, String badgeCode, LocalDateTime unlockedAt)
+    }
+    class BadgeService {
+        <<interface>>
+        +List~Map~ checkAndUnlock(Long userId)
+        +List~Map~ getMyBadges(Long userId)
+    }
+    class BadgeServiceImpl {
+        -CheckinService checkinService
+        -UserBadgeMapper userBadgeMapper
+    }
+    class BadgeController {
+        +Result getMyBadges(UserDetails userDetails)
+    }
+
+    %% ============ 打卡/统计/热力图（改造） ============
+    class CheckinService {
+        <<interface>>
+        +Map getUserCheckinStatsMine(Long userId)
+        +Map getHeatmapMine(Long userId, int days)
+    }
+    class CheckinServiceImpl {
+        -int calcLongestStreak(Long userId)
+        -List~Map~ calcExerciseTypeBreakdown(Long userId)
+    }
+    class CheckinRecordMapper {
+        +List~Map~ selectExerciseTypeBreakdownByUserId(Long userId)
+        +List~Map~ selectHeatmapByUserId(Long userId, String startDate)
+        +List~String~ selectDistinctCheckinDatesByUserId(Long userId)
+    }
+    class CheckinRecord {
+        +Long recordId
+        +Long planId
+        +Long circleId
+        +Long userId
+        +Integer duration
+        +String exerciseType
+        +String photoUrl
+        +String remark
+        +LocalDateTime checkinTime
+        +LocalDateTime createdAt
+        +List~Map~ newlyUnlockedBadges <<transient>>
+    }
+    class CheckinController {
+        +Result checkin(CheckinRequest, UserDetails)
+        +Result getStatsMine(UserDetails)
+        +Result getHeatmapMine(int days, UserDetails)
+    }
+
+    %% ============ 圈子/计划/用户（改造） ============
+    class Circle {
+        +Long circleId
+        +String name
+        +String description
+        +Long creatorId
+        +Integer maxMembers
+        +String inviteCode
+        +Integer status
+        +Integer memberCount <<transient>>
+    }
+    class CircleServiceImpl {
+        -Plan buildInitialPlan(Circle circle)
+        +Circle createCircle(Long creatorId, String name, String description, Integer maxMembers)
+        +List~Circle~ getUserCircles(Long userId)
+    }
+    class PlanServiceImpl {
+        +Plan updatePlan(Long planId, Long userId, UpdatePlanRequest req)
+    }
+    class PlanController {
+        +Result updatePlan(Long planId, UpdatePlanRequest request, UserDetails userDetails)
+    }
+    class UpdatePlanRequest {
+        +String name
+        +String description
+        +LocalDate startDate
+        +LocalDate endDate
+        +Integer totalDurationGoal
+        +Integer dailyDurationGoal
+        +Integer circleTotalGoal
+        +Integer minDurationPerCheckin
+    }
+    class UserServiceImpl {
+        +User updateUser(Long userId, String nickname, String avatarUrl)
+    }
+    class UpdateUserInfoRequest {
+        +String nickname
+        +String avatarUrl
+    }
+    class AuthController {
+        +Result updateUserInfo(UpdateUserInfoRequest request, UserDetails userDetails)
+    }
+    class CreateCircleRequest {
+        +String name
+        +String description
+        +Integer maxMembers @Max(50)
+    }
+
+    %% ============ 关系 ============
+    BadgeController --> BadgeService
+    BadgeService <|.. BadgeServiceImpl
+    BadgeServiceImpl --> CheckinService
+    BadgeServiceImpl --> UserBadgeMapper
+    BadgeServiceImpl ..> BadgeCode : 遍历判定
+    BadgeController --> CheckinService : 取 stats
+    CheckinService <|.. CheckinServiceImpl
+    CheckinServiceImpl --> CheckinRecordMapper
+    CheckinController --> CheckinService
+    CheckinController --> BadgeService : 编排徽章判定
+    CheckinController ..> CheckinRecord : setNewlyUnlockedBadges
+    CircleServiceImpl ..> PlanMapper : 直插初始计划(避免循环依赖)
+    CircleServiceImpl ..> CircleMemberMapper : countByCircleId
+    PlanServiceImpl ..> PlanMapper : updateById
+    PlanController --> PlanServiceImpl
+    AuthController --> UserServiceImpl
