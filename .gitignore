@@ -7,6 +7,7 @@ node_modules/
 dist/
 build/
 .taro/
+.swc/
 
 # Environment variables
 .env
@@ -37,6 +38,7 @@ yarn-error.log*
 # Python
 __pycache__/
 *.pyc
+ssh_*.py
 
 # Maven
 target/
@@ -46,6 +48,9 @@ target/
 
 # Uploads
 uploads/
+
+# WorkBuddy workspace memory (local-only)
+.workbuddy/
 
 # Keep source files
 !src/
