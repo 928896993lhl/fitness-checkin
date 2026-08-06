@@ -1,7 +1,15 @@
 .circle-detail-page {
   min-height: 100vh;
   background-color: #f5f5f5;
-  padding-bottom: 40rpx;
+  /* 为底部自渲染导航（约100rpx + safe-area）留出空间，避免内容被遮挡 */
+  padding-bottom: 240rpx;
+  padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
+}
+
+/* 详情页外层容器：承载全屏 ScrollView 与固定底部导航 */
+.circle-detail-wrapper {
+  width: 100%;
+  min-height: 100vh;
 }
 
 .circle-header {

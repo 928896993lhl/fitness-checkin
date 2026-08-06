@@ -11,6 +11,7 @@ import PlanProgressCard from '../../../components/plan/PlanProgressCard'
 import LooseCheckinPanel from '../../../components/checkin/LooseCheckinPanel'
 import EmptyState from '../../../components/common/EmptyState'
 import LoadingSpinner from '../../../components/common/LoadingSpinner'
+import BottomTabBar from '../../../components/common/BottomTabBar'
 import './detail.scss'
 
 /**
@@ -317,12 +318,13 @@ const CircleDetail = () => {
   }
 
   return (
-    <ScrollView
-      className='circle-detail-page'
-      scrollY
-      enhanced
-      showScrollbar={false}
-    >
+    <View className='circle-detail-wrapper'>
+      <ScrollView
+        className='circle-detail-page'
+        scrollY
+        enhanced
+        showScrollbar={false}
+      >
       {/* 圈子头部信息 */}
       <View className='circle-header'>
         <View className='header-bg'></View>
@@ -546,7 +548,11 @@ const CircleDetail = () => {
         defaultPlanId={currentPlan?.planId}
         defaultCircleId={circleId}
       />
-    </ScrollView>
+      </ScrollView>
+
+      {/* 自渲染底部导航：保留 首页/圈子/我的 三个 tab（原生 tabBar 在非 tab 页不显示） */}
+      <BottomTabBar current='circle' />
+    </View>
   )
 }
 
