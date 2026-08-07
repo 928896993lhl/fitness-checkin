@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS `checkin_records` (
     FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='打卡记录表';
 
--- 用户徽章解锁记录表（复合主键 user_id + badge_code）
+-- 用户徽章解锁记录表（复合主键 user_id + badge_code；徽章共 19 个，定义见后端 BadgeCode 枚举）
 CREATE TABLE IF NOT EXISTS `user_badges` (
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `badge_code` VARCHAR(50) NOT NULL COMMENT '徽章编码（对应 BadgeCode.code）',
@@ -119,3 +119,11 @@ CREATE INDEX idx_checkin_records_plan_user ON checkin_records(plan_id, user_id);
 -- ALTER TABLE `checkin_records` ADD COLUMN `circle_id` BIGINT NULL COMMENT '圈子ID（可空，宽松打卡）' AFTER `plan_id`;
 -- ALTER TABLE `checkin_records` ADD INDEX `idx_circle_id` (`circle_id`);
 -- ALTER TABLE `checkin_records` MODIFY COLUMN `plan_id` BIGINT NULL COMMENT '计划ID（可空，宽松打卡）';
+
+-- ============================================================
+-- 生产环境迁移（圈子维度聚合加速，P1 可选，2026-08-01）
+-- 圈子热力图/统计按 circle_id + checkin_time 聚合（GET /checkin/heatmap/circle/{id}、
+-- GET /checkin/stats/circle/{id}），数据量大时建议加复合索引：
+-- 低峰执行、先备份、勿重复执行。仅注释不执行。
+-- ============================================================
+-- ALTER TABLE `checkin_records` ADD INDEX `idx_checkin_records_circle_time` (`circle_id`, `checkin_time`);

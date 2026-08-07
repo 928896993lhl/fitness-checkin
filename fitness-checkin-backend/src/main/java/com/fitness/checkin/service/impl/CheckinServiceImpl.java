@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -180,13 +181,15 @@ public class CheckinServiceImpl implements CheckinService {
         stats.put("currentStreak", calcCurrentStreak(userId));
         stats.put("completionRate", calcCompletionRate(userId));
 
-        // 扩展：历史最长连续 + 运动类型分布 + 里程估算（徽章判定与运动生涯页共用口径）
+        // 扩展：历史最长连续 + 运动类型分布 + 里程估算 + 消耗估算（徽章判定与运动生涯页共用口径）
         stats.put("longestStreak", calcLongestStreak(userId));
         List<Map<String, Object>> exerciseTypeBreakdown =
                 checkinRecordMapper.selectExerciseTypeBreakdownByUserId(userId);
         stats.put("exerciseTypeBreakdown",
                 exerciseTypeBreakdown != null ? exerciseTypeBreakdown : new ArrayList<>());
         stats.put("estimatedDistanceKm", BadgeCode.estimateDistanceKm(exerciseTypeBreakdown));
+        // r3 新增：估算累计消耗（千卡），复用已查的 exerciseTypeBreakdown，零额外 SQL
+        stats.put("estimatedKcal", BadgeCode.estimateKcal(exerciseTypeBreakdown));
 
         return stats;
     }
@@ -211,6 +214,64 @@ public class CheckinServiceImpl implements CheckinService {
         result.put("startDate", startDate.toString());
         result.put("endDate", today.toString());
         result.put("days", dayRows != null ? dayRows : new ArrayList<>());
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getHeatmapCircle(Long circleId, Long userId, int days) {
+        // 权限：仅圈子成员可查，非成员 403（Controller 不得降级掩盖）
+        if (!circleService.isCircleMember(circleId, userId)) {
+            throw BusinessException.forbidden("您不是该圈子成员，无法查看圈子热力图");
+        }
+
+        // 天数截断：默认 365，下限 7，上限 365
+        if (days < 7) {
+            days = 7;
+        }
+        if (days > 365) {
+            days = 365;
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(days - 1);
+
+        List<Map<String, Object>> dayRows =
+                checkinRecordMapper.selectHeatmapByCircleId(circleId, startDate.atStartOfDay());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("circleId", circleId);
+        result.put("startDate", startDate.toString());
+        result.put("endDate", today.toString());
+        result.put("days", dayRows != null ? dayRows : new ArrayList<>());
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getCircleCheckinStats(Long circleId, Long userId) {
+        // 权限：仅圈子成员可查，非成员 403（Controller 不得降级掩盖）
+        if (!circleService.isCircleMember(circleId, userId)) {
+            throw BusinessException.forbidden("您不是该圈子成员，无法查看圈子统计");
+        }
+
+        Map<String, Object> circleStats = checkinRecordMapper.selectCircleStats(circleId);
+        long totalCheckins = getLong(circleStats, "totalCheckins");
+        long totalDuration = getLong(circleStats, "totalDuration");
+
+        // 本周活跃：本周一 00:00 起的自然周（口径与热力图 days 无耦合）
+        LocalDateTime weekStart = LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay();
+        Integer activeMembers = checkinRecordMapper.selectActiveMembersByCircleId(circleId, weekStart);
+
+        // 今日活跃：今日 00:00 起
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        Integer todayActiveCount = checkinRecordMapper.selectTodayActiveCountByCircleId(circleId, todayStart);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("circleId", circleId);
+        result.put("totalDuration", totalDuration);
+        result.put("totalCheckins", totalCheckins);
+        result.put("activeMembers", activeMembers != null ? activeMembers : 0);
+        result.put("avgDurationPerCheckin", totalCheckins > 0 ? Math.round((double) totalDuration / totalCheckins) : 0);
+        result.put("todayActiveCount", todayActiveCount != null ? todayActiveCount : 0);
         return result;
     }
 
@@ -395,5 +456,20 @@ public class CheckinServiceImpl implements CheckinService {
         }
 
         return totalDaysSum > 0 ? (double) checkinDaysSum / totalDaysSum * 100 : 0.0;
+    }
+
+    /**
+     * 安全读取长整型（兼容 Integer/Long/BigInteger 等 Number）
+     *
+     * @param map 数据 Map
+     * @param key 键
+     * @return 长整型值，缺失或非数字时为 0
+     */
+    private long getLong(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return 0L;
     }
 }

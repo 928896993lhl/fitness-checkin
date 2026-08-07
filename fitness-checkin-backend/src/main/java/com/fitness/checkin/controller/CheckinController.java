@@ -1,6 +1,7 @@
 package com.fitness.checkin.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fitness.checkin.common.BusinessException;
 import com.fitness.checkin.common.Result;
 import com.fitness.checkin.dto.CheckinRequest;
 import com.fitness.checkin.entity.CheckinRecord;
@@ -96,6 +97,61 @@ public class CheckinController {
             emptyData.put("startDate", LocalDate.now().toString());
             emptyData.put("endDate", LocalDate.now().toString());
             emptyData.put("days", new ArrayList<>());
+            return Result.success(emptyData);
+        }
+    }
+
+    /**
+     * 获取圈子活跃度热力图（圈子维度，按天聚合）
+     * 权限：仅圈子成员可查，非成员 403（BusinessException 原样透出，不降级掩盖）
+     */
+    @GetMapping("/heatmap/circle/{circleId}")
+    public Result<?> getHeatmapCircle(@PathVariable Long circleId,
+                                      @RequestParam(defaultValue = "365") int days,
+                                      @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = getCurrentUser(userDetails);
+            Map<String, Object> data = checkinService.getHeatmapCircle(circleId, user.getUserId(), days);
+            return Result.success(data);
+        } catch (BusinessException e) {
+            // 权限校验失败（403 等）必须透出，禁止降级为空结构掩盖
+            logger.warn("查询圈子热力图被拒绝: {} - {}", e.getCode(), e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            logger.warn("查询圈子热力图失败，返回空数据: {}", e.getMessage());
+            Map<String, Object> emptyData = new HashMap<>();
+            emptyData.put("circleId", circleId);
+            emptyData.put("startDate", LocalDate.now().toString());
+            emptyData.put("endDate", LocalDate.now().toString());
+            emptyData.put("days", new ArrayList<>());
+            return Result.success(emptyData);
+        }
+    }
+
+    /**
+     * 获取圈子打卡统计（圈子维度）
+     * 权限：仅圈子成员可查，非成员 403（BusinessException 原样透出，不降级掩盖）
+     */
+    @GetMapping("/stats/circle/{circleId}")
+    public Result<?> getCircleCheckinStats(@PathVariable Long circleId,
+                                           @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = getCurrentUser(userDetails);
+            Map<String, Object> data = checkinService.getCircleCheckinStats(circleId, user.getUserId());
+            return Result.success(data);
+        } catch (BusinessException e) {
+            // 权限校验失败（403 等）必须透出，禁止降级为空结构掩盖
+            logger.warn("查询圈子统计被拒绝: {} - {}", e.getCode(), e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            logger.warn("查询圈子统计失败，返回空统计: {}", e.getMessage());
+            Map<String, Object> emptyData = new HashMap<>();
+            emptyData.put("circleId", circleId);
+            emptyData.put("totalDuration", 0);
+            emptyData.put("totalCheckins", 0);
+            emptyData.put("activeMembers", 0);
+            emptyData.put("avgDurationPerCheckin", 0);
+            emptyData.put("todayActiveCount", 0);
             return Result.success(emptyData);
         }
     }

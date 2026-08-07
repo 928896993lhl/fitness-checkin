@@ -120,4 +120,25 @@ public interface CheckinService {
      * @return {startDate, endDate, days:[{date, minutes, count}]}（days 仅含有打卡记录的日期）
      */
     Map<String, Object> getHeatmapMine(Long userId, int days);
+
+    /**
+     * 获取圈子活跃度热力图（圈子维度，按天聚合）
+     * 权限：仅圈子成员可查，非成员抛 BusinessException.forbidden（403）
+     * 
+     * @param circleId 圈子ID
+     * @param userId   当前用户ID
+     * @param days     天数（默认365，下限7，上限365，超界截断）
+     * @return {circleId, startDate, endDate, days:[{date, count, totalMinutes}]}（days 仅含有打卡记录的日期）
+     */
+    Map<String, Object> getHeatmapCircle(Long circleId, Long userId, int days);
+
+    /**
+     * 获取圈子打卡统计（圈子维度）
+     * 权限：仅圈子成员可查，非成员抛 BusinessException.forbidden（403）
+     * 
+     * @param circleId 圈子ID
+     * @param userId   当前用户ID
+     * @return {circleId, totalDuration, totalCheckins, activeMembers, avgDurationPerCheckin, todayActiveCount}
+     */
+    Map<String, Object> getCircleCheckinStats(Long circleId, Long userId);
 }

@@ -3,12 +3,14 @@ import Taro, { useDidShow, usePullDownRefresh, stopPullDownRefresh, useRouter, u
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useUserState } from '../../../context/UserContext'
 import { CircleService } from '../../../services/CircleService'
+import { CheckinService } from '../../../services/CheckinService'
 import { PlanService } from '../../../services/PlanService'
-import { Circle, Plan, CircleMember, UserExerciseStats } from '../../../types'
+import { Circle, Plan, CircleMember, CircleStats, HeatmapData } from '../../../types'
 import { isCircleActive } from '../../../types/constants'
 import MemberAvatarList from '../../../components/circle/MemberAvatarList'
 import PlanProgressCard from '../../../components/plan/PlanProgressCard'
 import LooseCheckinPanel from '../../../components/checkin/LooseCheckinPanel'
+import Heatmap from '../../../components/heatmap/Heatmap'
 import EmptyState from '../../../components/common/EmptyState'
 import LoadingSpinner from '../../../components/common/LoadingSpinner'
 import BottomTabBar from '../../../components/common/BottomTabBar'
@@ -38,7 +40,8 @@ const CircleDetail = () => {
   const [circle, setCircle] = useState<Circle | null>(null)
   const [members, setMembers] = useState<CircleMember[]>([])
   const [currentPlan, setCurrentPlan] = useState<Plan | null>(null)
-  const [stats, setStats] = useState<UserExerciseStats | null>(null)
+  const [stats, setStats] = useState<CircleStats | null>(null)
+  const [heatmap, setHeatmap] = useState<HeatmapData | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
   const [panelVisible, setPanelVisible] = useState<boolean>(false)
@@ -66,12 +69,13 @@ const CircleDetail = () => {
     try {
       if (showLoading) setIsLoading(true)
 
-      // 并行请求数据
-      const [circleRes, membersRes, planRes, statsRes] = await Promise.allSettled([
+      // 并行请求数据（圈子维度统计 + 圈子维度热力图 365 天）
+      const [circleRes, membersRes, planRes, statsRes, heatmapRes] = await Promise.allSettled([
         CircleService.getCircleDetail(circleId),
         CircleService.getCircleMembers(circleId),
         PlanService.getPlansByCircle(circleId),
-        CircleService.getCircleStats(circleId)
+        CircleService.getCircleStats(circleId),
+        CheckinService.getCircleHeatmap(circleId, 365)
       ])
 
       // 处理圈子信息
@@ -91,9 +95,14 @@ const CircleDetail = () => {
         setCurrentPlan(pickCurrentPlan(plans))
       }
 
-      // 处理统计信息
+      // 处理圈子统计信息（圈子维度）
       if (statsRes.status === 'fulfilled' && statsRes.value.code === 200) {
         setStats(statsRes.value.data)
+      }
+
+      // 处理圈子活跃度热力图（圈子维度，按人数着色）
+      if (heatmapRes.status === 'fulfilled' && heatmapRes.value.code === 200) {
+        setHeatmap(heatmapRes.value.data)
       }
     } catch (error) {
       console.error('加载圈子详情失败:', error)
@@ -373,30 +382,39 @@ const CircleDetail = () => {
         </View>
       </View>
 
-      {/* 运动统计 */}
+      {/* 运动统计（圈子维度） */}
       {stats && (
         <View className='stats-card'>
           <Text className='card-title'>运动统计</Text>
           <View className='stats-grid'>
             <View className='stat-item'>
-              <Text className='stat-value'>{stats.todayDuration || 0}分钟</Text>
-              <Text className='stat-label'>今日运动</Text>
+              <Text className='stat-value'>{stats.todayActiveCount || 0}人</Text>
+              <Text className='stat-label'>今日打卡</Text>
             </View>
             <View className='stat-item'>
               <Text className='stat-value'>{formatDuration(stats.totalDuration || 0)}</Text>
               <Text className='stat-label'>总运动时长</Text>
             </View>
             <View className='stat-item'>
-              <Text className='stat-value'>{stats.checkinDays || 0}</Text>
-              <Text className='stat-label'>打卡天数</Text>
+              <Text className='stat-value'>{stats.totalCheckins || 0}次</Text>
+              <Text className='stat-label'>打卡次数</Text>
             </View>
             <View className='stat-item'>
-              <Text className='stat-value'>{Math.round(stats.completionRate || 0)}%</Text>
-              <Text className='stat-label'>完成率</Text>
+              <Text className='stat-value'>{stats.activeMembers || 0}人</Text>
+              <Text className='stat-label'>本周活跃</Text>
             </View>
           </View>
         </View>
       )}
+
+      {/* 圈子活跃度热力图（圈子维度，按人数着色；位于运动统计下方、当前计划上方） */}
+      <View className='circle-heatmap-section'>
+        <Text className='section-title'>圈子活跃度</Text>
+        <Heatmap
+          data={heatmap || { startDate: '', endDate: '', days: [] }}
+          mode='members'
+        />
+      </View>
 
       {/* 当前计划区（三态：进行中/待启动/无计划） */}
       <View className='plan-section'>

@@ -61,6 +61,14 @@ export const HEATMAP_LEVELS = [
   { min: 60, color: '#216E39' }
 ] as const
 
+/** 圈子热力图色阶（按当日去重打卡人数着色，r3 新增） */
+export const CIRCLE_HEATMAP_LEVELS = [
+  { min: 0, color: '#EBEDF0' }, // 0 人：灰
+  { min: 1, color: '#9BE9A8' }, // 1-2 人：浅绿
+  { min: 3, color: '#40C463' }, // 3-5 人：中绿
+  { min: 6, color: '#216E39' }  // ≥6 人：深绿
+] as const
+
 /** 运动类型里程系数（km/h），与后端 BadgeCode.EXERCISE_SPEED_KMH 必须同步 */
 export const EXERCISE_SPEED_KMH: Record<string, number> = {
   running: 8,
@@ -68,6 +76,29 @@ export const EXERCISE_SPEED_KMH: Record<string, number> = {
   cycling: 15,
   swimming: 3
 } as const
+
+/** 运动类型消耗系数（kcal/分钟），与后端 BadgeCode.KCAL_PER_MIN 必须同步（r3 新增） */
+export const KCAL_PER_MIN: Record<string, number> = {
+  running: 10,
+  walking: 5,
+  cycling: 8,
+  swimming: 11,
+  yoga: 4,
+  gym: 7,
+  other: 5
+} as const
+
+/** 徽章分类配置（r3 新增；组内顺序 = 后端 sort 升序） */
+export const BADGE_CATEGORY_CONFIG: Record<string, { name: string; icon: string }> = {
+  days: { name: '坚持天数', icon: '📅' },
+  streak: { name: '连续成就', icon: '🔥' },
+  duration: { name: '运动时长', icon: '⏱️' },
+  kcal: { name: '能量消耗', icon: '🔋' },
+  distance: { name: '里程全能', icon: '🚴' }
+} as const
+
+/** 徽章总数（r3：8→19，与后端 BadgeCode 枚举数量同步） */
+export const BADGE_TOTAL_COUNT = 19
 
 /** 计划规则 */
 export const PLAN_RULES = {
@@ -173,7 +204,8 @@ export const PAGE_PATHS = {
   PROFILE: '/pages/profile/profile',
   PROFILE_HISTORY: '/pages/profile/history/history',
   PROFILE_CAREER: '/pages/profile/career/career',
-  PROFILE_SETTINGS: '/pages/profile/settings/settings'
+  PROFILE_SETTINGS: '/pages/profile/settings/settings',
+  PROFILE_BADGES: '/pages/profile/badges/badges'
 } as const
 
 /** 正则表达式 */

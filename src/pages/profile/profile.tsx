@@ -5,25 +5,28 @@ import { useUserState, useUserDispatch } from '../../context/UserContext'
 import { UserService } from '../../services/UserService'
 import { CheckinService } from '../../services/CheckinService'
 import { BadgeService } from '../../services/BadgeService'
-import { BadgeInfo } from '../../types'
-import { PAGE_PATHS, REGEX_PATTERNS } from '../../types/constants'
+import { BadgeInfo, HeatmapData } from '../../types'
+import { PAGE_PATHS, REGEX_PATTERNS, BADGE_TOTAL_COUNT } from '../../types/constants'
 import { compressImage, chooseImage } from '../../utils/imageUtils'
 import BadgeWall from '../../components/badge/BadgeWall'
+import Heatmap from '../../components/heatmap/Heatmap'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import './profile.scss'
 
 /**
  * 个人中心页面
- * 用户信息卡（头像/昵称可编辑）、徽章墙、运动历史/运动生涯/设置入口、退出登录
+ * 用户信息卡（头像/昵称可编辑）、活跃度热力图（180 天 compact）、徽章墙（iconOnly 已解锁 X/19）、
+ * 运动历史/运动生涯/设置入口、退出登录
  */
 const Profile = () => {
   const { user, isLoggedIn } = useUserState()
   const { updateUser, logout } = useUserDispatch()
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [badges, setBadges] = useState<BadgeInfo[]>([])
+  const [heatmap, setHeatmap] = useState<HeatmapData | null>(null)
 
   /**
-   * 加载个人中心数据（徽章墙）
+   * 加载个人中心数据（徽章墙 + 180 天热力图，并行）
    */
   const loadData = async () => {
     if (!isLoggedIn) {
@@ -31,13 +34,20 @@ const Profile = () => {
       return
     }
     try {
-      const res = await BadgeService.getMyBadges()
-      if (res.code === 200) {
-        setBadges(Array.isArray(res.data) ? res.data : [])
+      const [badgesRes, heatmapRes] = await Promise.allSettled([
+        BadgeService.getMyBadges(),
+        CheckinService.getHeatmap(180)
+      ])
+      if (badgesRes.status === 'fulfilled' && badgesRes.value.code === 200) {
+        setBadges(Array.isArray(badgesRes.value.data) ? badgesRes.value.data : [])
+      }
+      if (heatmapRes.status === 'fulfilled' && heatmapRes.value.code === 200) {
+        setHeatmap(heatmapRes.value.data)
       }
     } catch (error) {
-      console.error('加载徽章失败:', error)
+      console.error('加载个人中心数据失败:', error)
       setBadges([])
+      setHeatmap(null)
     } finally {
       setIsLoading(false)
     }
@@ -69,11 +79,20 @@ const Profile = () => {
   }
 
   /**
-   * 跳转到运动生涯页
+   * 跳转到运动生涯页（热力图"更多›"）
    */
   const navigateToCareer = () => {
     Taro.navigateTo({
       url: PAGE_PATHS.PROFILE_CAREER
+    })
+  }
+
+  /**
+   * 跳转到徽章列表页（徽章墙"查看全部›"/点徽章）
+   */
+  const navigateToBadges = () => {
+    Taro.navigateTo({
+      url: PAGE_PATHS.PROFILE_BADGES
     })
   }
 
@@ -254,18 +273,27 @@ const Profile = () => {
         </View>
       </View>
 
-      {/* 徽章墙（前6个 + 查看全部） */}
-      {badges.length > 0 && (
-        <View className='badges-section'>
-          <View className='badges-header'>
-            <Text className='badges-title'>我的徽章</Text>
-            <View className='badges-more' onClick={navigateToCareer}>
-              <Text className='badges-more-text'>查看全部 ›</Text>
-            </View>
+      {/* 活跃度热力图（180 天 compact；更多› 跳运动生涯） */}
+      <View className='heatmap-section'>
+        <Heatmap
+          data={heatmap || { startDate: '', endDate: '', days: [] }}
+          compact
+          mode='minutes'
+          showMore
+          onMore={navigateToCareer}
+        />
+      </View>
+
+      {/* 徽章墙（仅已解锁图标；查看全部/点徽章跳徽章列表页） */}
+      <View className='badges-section'>
+        <View className='badges-header'>
+          <Text className='badges-title'>我的徽章 已解锁 {badges.filter(b => b.unlocked).length}/{BADGE_TOTAL_COUNT}</Text>
+          <View className='badges-more' onClick={navigateToBadges}>
+            <Text className='badges-more-text'>查看全部 ›</Text>
           </View>
-          <BadgeWall badges={badges} limit={6} />
         </View>
-      )}
+        <BadgeWall badges={badges} iconOnly onBadgeTap={navigateToBadges} />
+      </View>
 
       {/* 功能菜单 */}
       <View className='menu-section'>

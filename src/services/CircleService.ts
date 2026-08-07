@@ -2,7 +2,7 @@ import { request } from '../utils/request'
 import {
   Circle,
   CircleMember,
-  UserExerciseStats,
+  CircleStats,
   Plan,
   CreateCircleRequest,
   JoinCircleRequest,
@@ -70,9 +70,10 @@ export class CircleService {
   }
 
   /**
-   * 获取圈子统计（本轮后端圈子维度统计未改造，临时复用用户维度统计接口）
+   * 获取圈子打卡统计（圈子维度，r3 起指向 /checkin/stats/circle/{id}，替代临时用户维度统计）
+   * 权限：仅圈子成员可查，非成员返回 403
    */
-  static async getCircleStats(circleId: string): Promise<APIResponse<UserExerciseStats>> {
-    return request('/checkin/stats/mine')
+  static async getCircleStats(circleId: string): Promise<APIResponse<CircleStats>> {
+    return request(`/checkin/stats/circle/${circleId}`)
   }
 }

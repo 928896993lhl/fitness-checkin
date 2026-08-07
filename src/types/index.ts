@@ -238,6 +238,7 @@ export interface UserExerciseStats {
   longestStreak: number // 历史最长连续打卡天数
   exerciseTypeBreakdown: ExerciseTypeBreakdownItem[] // 运动类型分布
   estimatedDistanceKm: number // 估算总里程（公里）
+  estimatedKcal: number // 估算总消耗（千卡，r3 新增，与后端 BadgeCode.estimateKcal 同步）
 }
 
 /** 运动类型分布条目 */
@@ -246,7 +247,7 @@ export interface ExerciseTypeBreakdownItem {
   duration: number // 该类运动累计时长（分钟）
 }
 
-/** 徽章信息（对齐 GET /badges/mine，8 条固定顺序） */
+/** 徽章信息（对齐 GET /badges/mine，19 条固定顺序 = 后端 sort 升序） */
 export interface BadgeInfo {
   code: string
   name: string
@@ -255,6 +256,10 @@ export interface BadgeInfo {
   unlocked: boolean
   unlockedAt?: Timestamp | null
   progressText: string
+  // r3 新增：分类（days/streak/duration/kcal/distance）/ 全局排序（1~19）/ 未解锁"还差 N 解锁"（已解锁为 null）
+  category?: string
+  sort?: number
+  remainText?: string | null
 }
 
 /** 本次打卡新解锁徽章（POST /checkin 响应瞬态字段元素） */
@@ -267,28 +272,27 @@ export interface NewlyUnlockedBadge {
 /** 热力图单日数据 */
 export interface HeatmapDay {
   date: string // YYYY-MM-DD
-  minutes: number // 当日总运动时长
-  count: number // 当日打卡次数
+  minutes?: number // 用户模式：当日总运动时长
+  count: number // 用户模式=当日打卡次数；圈子模式=当日去重打卡人数
+  totalMinutes?: number // 圈子模式：当日总分钟
 }
 
-/** 热力图数据（对齐 GET /checkin/heatmap/mine） */
+/** 热力图数据（对齐 GET /checkin/heatmap/mine 与 GET /checkin/heatmap/circle/{id}） */
 export interface HeatmapData {
   startDate: string // YYYY-MM-DD
   endDate: string // YYYY-MM-DD
   days: HeatmapDay[] // 仅含有打卡记录的日期
+  circleId?: ID // 圈子热力图返回（圈子维度）
 }
 
-/** 圈子运动统计 */
-export interface CircleExerciseStats {
+/** 圈子打卡统计（对齐 GET /checkin/stats/circle/{id}，r3 新增，替代 CircleExerciseStats） */
+export interface CircleStats {
   circleId: ID
-  totalDuration: number // 圈子总运动时长
-  totalCheckins: number // 圈子总打卡次数
-  memberCount: number // 成员数量
-  activeMemberCount: number // 活跃成员数量（本周打卡）
-  averageDuration: number // 人均运动时长
-  checkinDays: number // 累计打卡天数
-  passedDays: number // 计划已进行天数
-  completionRate: number // 计划完成率（0-100）
+  totalDuration: number // 圈子累计总时长（分钟）
+  totalCheckins: number // 圈子累计打卡次数
+  activeMembers: number // 本周去重打卡人数
+  avgDurationPerCheckin: number // 平均每次时长（分钟，= totalDuration/totalCheckins，除零保护）
+  todayActiveCount: number // 今日去重打卡人数
 }
 
 /** 计划进度 */
@@ -347,6 +351,23 @@ export interface CircleCardProps {
   memberCount?: number
   currentPlan?: Plan | null
   onTap?: (circle: Circle) => void
+}
+
+/** 徽章墙组件Props */
+export interface BadgeWallProps {
+  badges: BadgeInfo[]
+  limit?: number // 最多展示数量（默认全部）
+  iconOnly?: boolean // r3：仅显示已解锁图标（5 列紧凑 grid），默认 false 普通 3 列模式
+  onBadgeTap?: (badge: BadgeInfo) => void // r3：iconOnly 模式点击徽章回调
+}
+
+/** 活跃度热力图组件Props */
+export interface HeatmapProps {
+  data: HeatmapData
+  compact?: boolean // r3：8px 紧凑格子（我的页），默认 false 12px 格子
+  mode?: 'minutes' | 'members' // r3：着色维度，默认 minutes（按分钟）；members 按人数
+  showMore?: boolean // r3：区块右上角"更多›"，默认 false
+  onMore?: () => void
 }
 
 /** 打卡记录卡片组件Props */

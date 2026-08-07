@@ -215,6 +215,20 @@
   }
 }
 
+/* 圈子活跃度热力图（圈子维度，members 模式；位于运动统计下方、当前计划上方） */
+.circle-heatmap-section {
+  padding: 0 30rpx;
+  margin-bottom: 30rpx;
+
+  .section-title {
+    font-size: 30rpx;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20rpx;
+    display: block;
+  }
+}
+
 /* 待启动计划卡（status=0） */
 .pending-plan-card {
   background-color: #fff;

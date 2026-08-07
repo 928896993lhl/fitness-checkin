@@ -1,0 +1,183 @@
+classDiagram
+    direction LR
+
+    %% ==================== 后端 ====================
+    class BadgeCode {
+        <<enumeration>>
+        +String code
+        +String name
+        +String icon
+        +String conditionText
+        +String category
+        +int sort
+        +isUnlocked(Map stats) boolean
+        +progressText(Map stats) String
+        +estimateDistanceKm(List breakdown) double
+        +estimateKcal(List breakdown) double
+        +remainText(String progressText) String
+    }
+
+    class BadgeService {
+        <<interface>>
+        +checkAndUnlock(Long userId, Map stats) List~Map~
+        +getMyBadges(Long userId) List~Map~
+    }
+
+    class BadgeServiceImpl {
+        -UserBadgeMapper userBadgeMapper
+        -CheckinService checkinService
+        +checkAndUnlock(Long userId, Map stats) List~Map~
+        +getMyBadges(Long userId) List~Map~
+    }
+
+    class UserBadge {
+        +Long userId
+        +String badgeCode
+        +LocalDateTime unlockedAt
+    }
+
+    class UserBadgeMapper {
+        +selectByUserId(Long userId) List~UserBadge~
+        +insertIgnore(UserBadge badge) int
+    }
+
+    class CheckinService {
+        <<interface>>
+        +checkin(...) CheckinRecord
+        +getUserCheckinStatsMine(Long userId) Map
+        +getHeatmapMine(Long userId, int days) Map
+        +getHeatmapCircle(Long circleId, Long userId, int days) Map
+        +getCircleCheckinStats(Long circleId, Long userId) Map
+    }
+
+    class CheckinServiceImpl {
+        -CheckinRecordMapper checkinRecordMapper
+        -PlanService planService
+        -CircleService circleService
+        +getUserCheckinStatsMine(Long userId) Map
+        +getHeatmapMine(Long userId, int days) Map
+        +getHeatmapCircle(Long circleId, Long userId, int days) Map
+        +getCircleCheckinStats(Long circleId, Long userId) Map
+    }
+
+    class CheckinRecordMapper {
+        +selectExerciseTypeBreakdownByUserId(Long userId) List~Map~
+        +selectHeatmapByUserId(Long userId, LocalDateTime startDate) List~Map~
+        +selectHeatmapByCircleId(Long circleId, LocalDateTime startDate) List~Map~
+        +selectCircleStats(Long circleId) Map
+        +selectActiveMembersByCircleId(Long circleId, LocalDateTime weekStart) int
+        +selectTodayActiveCountByCircleId(Long circleId, LocalDateTime todayStart) int
+    }
+
+    class CheckinController {
+        +checkin(req, userDetails) Result
+        +getHeatmapMine(days, userDetails) Result
+        +getHeatmapCircle(circleId, days, userDetails) Result
+        +getCircleCheckinStats(circleId, userDetails) Result
+    }
+
+    class CheckinRecord {
+        +Long recordId
+        +Long planId
+        +Long circleId
+        +Long userId
+        +int duration
+        +String exerciseType
+        +List~Map~ newlyUnlockedBadges
+    }
+
+    class CircleService {
+        <<interface>>
+        +isCircleMember(Long circleId, Long userId) boolean
+    }
+
+    BadgeCode <.. BadgeServiceImpl : uses
+    BadgeServiceImpl ..|> BadgeService
+    BadgeServiceImpl --> UserBadgeMapper
+    BadgeServiceImpl --> CheckinService
+    UserBadgeMapper ..> UserBadge : maps
+    CheckinServiceImpl ..|> CheckinService
+    CheckinServiceImpl --> CheckinRecordMapper
+    CheckinServiceImpl --> CircleService : permission check
+    CheckinController --> CheckinService
+    CheckinController --> BadgeService : orchestrate (avoid cycle)
+    CheckinController --> UserBadge : transient field
+    CheckinRecordMapper ..> CheckinRecord : maps
+
+    %% ==================== 前端 ====================
+    class BadgeInfo {
+        +string code
+        +string name
+        +string icon
+        +string conditionText
+        +boolean unlocked
+        +string progressText
+        +string category
+        +number sort
+        +string remainText
+    }
+
+    class HeatmapData {
+        +string startDate
+        +string endDate
+        +HeatmapDay[] days
+        +ID circleId
+    }
+
+    class HeatmapDay {
+        +string date
+        +number minutes
+        +number count
+        +number totalMinutes
+    }
+
+    class CircleStats {
+        +ID circleId
+        +number totalDuration
+        +number totalCheckins
+        +number activeMembers
+        +number avgDurationPerCheckin
+        +number todayActiveCount
+    }
+
+    class BadgeWall {
+        +BadgeInfo[] badges
+        +number limit
+        +boolean iconOnly
+        +onBadgeTap(badge) void
+    }
+
+    class Heatmap {
+        +HeatmapData data
+        +boolean compact
+        +string mode
+        +boolean showMore
+        +onMore() void
+    }
+
+    class ProfilePage {
+        +loadData() void
+        +navigateToBadges() void
+        +navigateToCareer() void
+    }
+
+    class BadgesPage {
+        +loadData() void
+        +groupByCategory(badges) Map
+        +openDetail(badge) void
+    }
+
+    class CircleDetailPage {
+        +loadData() void
+        +renderCircleHeatmap() void
+        +renderCircleStats() void
+    }
+
+    BadgeInfo --> BadgeWall : renders
+    HeatmapData --> Heatmap : renders
+    HeatmapDay --> HeatmapData : contains
+    BadgesPage --> BadgeInfo : groups by category
+    ProfilePage --> BadgeWall : iconOnly mode
+    ProfilePage --> Heatmap : compact 180d
+    CircleDetailPage --> CircleStats : circle-dim stats
+    CircleDetailPage --> Heatmap : members mode

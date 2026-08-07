@@ -86,4 +86,26 @@
       text-align: center;
     }
   }
+
+  /* r3 iconOnly 模式：仅已解锁图标，5 列紧凑 grid（40-44px 图标，浅底圆角） */
+  &.icon-only {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16rpx;
+
+    .badge-icon-item {
+      aspect-ratio: 1;
+      background-color: #f3f6fc;
+      border: 2rpx solid #e0e7ff;
+      border-radius: 20rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .badge-icon {
+        font-size: 44rpx;
+        line-height: 1;
+      }
+    }
+  }
 }

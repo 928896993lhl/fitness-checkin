@@ -2,6 +2,7 @@ import { request, uploadFile } from '../utils/request'
 import {
   CheckinRecord,
   UserExerciseStats,
+  CircleStats,
   CreateCheckinRequest,
   GetCheckinRecordsRequest,
   HeatmapData,
@@ -28,6 +29,25 @@ export class CheckinService {
    */
   static async getHeatmap(days: number = 365): Promise<APIResponse<HeatmapData>> {
     return request(`/checkin/heatmap/mine?days=${days}`)
+  }
+
+  /**
+   * 获取圈子活跃度热力图（圈子维度，按天聚合，r3 新增）
+   * 权限：仅圈子成员可查，非成员返回 403
+   * @param circleId 圈子ID
+   * @param days 天数（默认365，后端截断 [7,365]）
+   */
+  static async getCircleHeatmap(circleId: string, days: number = 365): Promise<APIResponse<HeatmapData>> {
+    return request(`/checkin/heatmap/circle/${circleId}?days=${days}`)
+  }
+
+  /**
+   * 获取圈子打卡统计（圈子维度，r3 新增）
+   * 权限：仅圈子成员可查，非成员返回 403
+   * @param circleId 圈子ID
+   */
+  static async getCircleStats(circleId: string): Promise<APIResponse<CircleStats>> {
+    return request(`/checkin/stats/circle/${circleId}`)
   }
 
   /**

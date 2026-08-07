@@ -306,6 +306,7 @@ const Index = () => {
               <CircleCard
                 key={circle.circleId}
                 circle={circle}
+                memberCount={circle.memberCount}
                 onTap={navigateToCircle}
               />
             ))}

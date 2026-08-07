@@ -101,6 +101,7 @@ public class BadgeServiceImpl implements BadgeService {
         List<Map<String, Object>> badges = new ArrayList<>();
         for (BadgeCode badge : BadgeCode.values()) {
             LocalDateTime unlockedAt = unlockedAtMap.get(badge.getCode());
+            String progressText = badge.progressText(stats);
             Map<String, Object> item = new HashMap<>();
             item.put("code", badge.getCode());
             item.put("name", badge.getName());
@@ -108,7 +109,11 @@ public class BadgeServiceImpl implements BadgeService {
             item.put("conditionText", badge.getConditionText());
             item.put("unlocked", unlockedAt != null);
             item.put("unlockedAt", unlockedAt);
-            item.put("progressText", badge.progressText(stats));
+            item.put("progressText", progressText);
+            // 徽章扩展（r3）：category 分类 / sort 全局排序 / remainText 未解锁"还差 N 解锁"（已解锁为 null）
+            item.put("category", badge.getCategory());
+            item.put("sort", badge.getSort());
+            item.put("remainText", unlockedAt != null ? null : BadgeCode.remainText(progressText));
             badges.add(item);
         }
         return badges;

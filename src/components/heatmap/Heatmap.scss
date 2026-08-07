@@ -3,11 +3,31 @@
   border-radius: 20rpx;
   padding: 30rpx 24rpx;
 
-  &.empty {
+  .heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20rpx;
+
+    .heatmap-title {
+      font-size: 30rpx;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .heatmap-more {
+      .heatmap-more-text {
+        font-size: 24rpx;
+        color: #3b82f6;
+      }
+    }
+  }
+
+  .heatmap-empty {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 60rpx 24rpx;
+    padding: 40rpx 0;
 
     .heatmap-empty-text {
       font-size: 26rpx;
@@ -88,6 +108,45 @@
       height: 22rpx;
       border-radius: 4rpx;
       margin: 0 4rpx;
+    }
+  }
+
+  /* r3 compact：8px 紧凑格子（我的页） */
+  &.compact {
+    padding: 24rpx;
+
+    .heatmap-cell {
+      width: 16rpx;
+      height: 16rpx;
+      border-radius: 3rpx;
+      margin-bottom: 2rpx;
+    }
+
+    .heatmap-column {
+      margin-right: 2rpx;
+    }
+
+    .heatmap-week-labels {
+      margin-bottom: 4rpx;
+
+      .week-label-cell {
+        width: 16rpx;
+        height: 16rpx;
+        margin-right: 2rpx;
+
+        .week-label-text {
+          font-size: 14rpx;
+        }
+      }
+    }
+
+    .heatmap-legend {
+      margin-top: 12rpx;
+
+      .legend-cell {
+        width: 16rpx;
+        height: 16rpx;
+      }
     }
   }
 }

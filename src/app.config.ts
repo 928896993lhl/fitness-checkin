@@ -10,6 +10,7 @@ export default defineAppConfig({
     'pages/plan/detail/detail',
     'pages/checkin/checkin',
     'pages/profile/profile',
+    'pages/profile/badges/badges',
     'pages/profile/history/history',
     'pages/profile/career/career',
     'pages/profile/settings/settings',

@@ -1,0 +1,66 @@
+sequenceDiagram
+    autonumber
+    actor U as 用户
+
+    %% ============ 流程1：打卡 → 徽章判定（19个） ============
+    Note over U,CheckinController: 流程1 打卡 + 徽章判定（含新增11徽章）
+    U->>CheckinController: POST /checkin {planId?, circleId, duration, exerciseType}
+    CheckinController->>CheckinServiceImpl: checkin(...)
+    CheckinServiceImpl->>CheckinRecordMapper: insert(record)  // circle_id 自动归属
+    CheckinServiceImpl-->>CheckinController: CheckinRecord
+    CheckinController->>CheckinServiceImpl: getUserCheckinStatsMine(userId)
+    CheckinServiceImpl->>BadgeCode: estimateKcal(breakdown)  // KCAL_PER_MIN
+    CheckinServiceImpl-->>CheckinController: stats（含 estimatedKcal）
+    CheckinController->>BadgeServiceImpl: checkAndUnlock(userId, stats)
+    loop 遍历 BadgeCode.values()（19个，sort升序）
+        BadgeServiceImpl->>BadgeCode: isUnlocked(stats) / category / sort
+        BadgeServiceImpl->>UserBadgeMapper: insertIgnore(new UserBadge)
+    end
+    BadgeServiceImpl-->>CheckinController: newlyUnlocked[{code,name,icon}]
+    CheckinController-->>U: {record, newlyUnlockedBadges}
+
+    %% ============ 流程2：我的页加载 ============
+    Note over U,ProfilePage: 流程2 我的页（热力图180 + 徽章墙iconOnly）
+    U->>ProfilePage: useDidShow → loadData()
+    par 并行请求
+        ProfilePage->>BadgeService: GET /badges/mine
+        BadgeService->>BadgeServiceImpl: getMyBadges(userId)
+        BadgeServiceImpl->>CheckinServiceImpl: getUserCheckinStatsMine(userId)
+        BadgeServiceImpl-->>ProfilePage: 19条 {category,sort,remainText,...}
+        ProfilePage->>CheckinService: GET /checkin/heatmap/mine?days=180
+        CheckinService->>CheckinServiceImpl: getHeatmapMine(userId, 180)
+        CheckinServiceImpl-->>ProfilePage: {startDate,endDate,days}
+    end
+    ProfilePage-->>U: 用户卡 + 热力图(compact) + 徽章墙(仅已解锁 X/19)
+    U->>ProfilePage: 点击"查看全部›"/徽章
+    ProfilePage->>BadgesPage: navigateTo /pages/profile/badges/badges
+    U->>ProfilePage: 点击热力图"更多›"
+    ProfilePage->>CareerPage: navigateTo career
+
+    %% ============ 流程3：徽章列表页 ============
+    Note over U,BadgesPage: 流程3 徽章列表页（总览 + 5分类 + 弹层）
+    U->>BadgesPage: 进入徽章列表页
+    BadgesPage->>BadgeService: GET /badges/mine
+    BadgesPage-->>U: 总览卡(已解锁X/19+进度条) + 5分类分组(days/streak/duration/kcal/distance)
+    U->>BadgesPage: 点击某徽章
+    BadgesPage-->>U: 底部弹层（大图标/名称/条件/progressText/remainText/unlockedAt）
+
+    %% ============ 流程4：圈子详情 ============
+    Note over U,CircleDetailPage: 流程4 圈子详情（圈子维度统计 + 圈子热力图）
+    U->>CircleDetailPage: 进入圈子详情
+    par 并行请求
+        CircleDetailPage->>CircleService: GET /circles/{circleId}
+        CircleDetailPage->>CircleService: GET /circles/{circleId}/members
+        CircleDetailPage->>PlanService: GET /plans/circle/{circleId}
+        CircleDetailPage->>CheckinService: GET /checkin/stats/circle/{circleId}
+        CheckinService->>CheckinServiceImpl: getCircleCheckinStats(circleId, userId)
+        CheckinServiceImpl->>CircleService: isCircleMember(circleId, userId)  // 非成员403
+        CheckinServiceImpl->>CheckinRecordMapper: selectCircleStats/selectActiveMembers/selectTodayActiveCount
+        CheckinServiceImpl-->>CircleDetailPage: CircleStats
+        CircleDetailPage->>CheckinService: GET /checkin/heatmap/circle/{circleId}?days=365
+        CheckinService->>CheckinServiceImpl: getHeatmapCircle(circleId, userId, 365)
+        CheckinServiceImpl->>CircleService: isCircleMember(circleId, userId)
+        CheckinServiceImpl->>CheckinRecordMapper: selectHeatmapByCircleId
+        CheckinServiceImpl-->>CircleDetailPage: {days:[{date,count,totalMinutes}]}
+    end
+    CircleDetailPage-->>U: 运动统计(圈子维度) + 圈子热力图(members色阶) + 当前计划 + 成员

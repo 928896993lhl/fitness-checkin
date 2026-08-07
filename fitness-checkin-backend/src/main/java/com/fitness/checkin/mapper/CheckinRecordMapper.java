@@ -177,4 +177,55 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
             "ORDER BY date ASC")
     List<Map<String, Object>> selectHeatmapByUserId(@Param("userId") Long userId,
                                                     @Param("startDate") LocalDateTime startDate);
+
+    /**
+     * 查询圈子热力图数据（按天聚合，圈子维度）
+     * 仅返回有打卡记录的日期；count=当日去重打卡人数，totalMinutes=当日总分钟
+     *
+     * @param circleId  圈子ID
+     * @param startDate 起始时间（含）
+     * @return 按天聚合列表 [{date, count, totalMinutes}, ...]
+     */
+    @Select("SELECT DATE_FORMAT(checkin_time, '%Y-%m-%d') AS date, " +
+            "COUNT(DISTINCT user_id) AS count, " +
+            "COALESCE(SUM(duration), 0) AS totalMinutes " +
+            "FROM checkin_records WHERE circle_id = #{circleId} AND checkin_time >= #{startDate} " +
+            "GROUP BY DATE_FORMAT(checkin_time, '%Y-%m-%d') " +
+            "ORDER BY date ASC")
+    List<Map<String, Object>> selectHeatmapByCircleId(@Param("circleId") Long circleId,
+                                                      @Param("startDate") LocalDateTime startDate);
+
+    /**
+     * 查询圈子累计打卡统计（圈子维度）
+     *
+     * @param circleId 圈子ID
+     * @return {totalCheckins, totalDuration}
+     */
+    @Select("SELECT COUNT(*) AS totalCheckins, COALESCE(SUM(duration), 0) AS totalDuration " +
+            "FROM checkin_records WHERE circle_id = #{circleId}")
+    Map<String, Object> selectCircleStats(@Param("circleId") Long circleId);
+
+    /**
+     * 查询圈子本周活跃人数（本周一 00:00 起去重打卡用户数，圈子维度）
+     *
+     * @param circleId  圈子ID
+     * @param weekStart 本周起始时间（含）
+     * @return 本周去重打卡用户数
+     */
+    @Select("SELECT COUNT(DISTINCT user_id) FROM checkin_records " +
+            "WHERE circle_id = #{circleId} AND checkin_time >= #{weekStart}")
+    Integer selectActiveMembersByCircleId(@Param("circleId") Long circleId,
+                                          @Param("weekStart") LocalDateTime weekStart);
+
+    /**
+     * 查询圈子今日活跃人数（今日 00:00 起去重打卡用户数，圈子维度）
+     *
+     * @param circleId   圈子ID
+     * @param todayStart 今日起始时间（含）
+     * @return 今日去重打卡用户数
+     */
+    @Select("SELECT COUNT(DISTINCT user_id) FROM checkin_records " +
+            "WHERE circle_id = #{circleId} AND checkin_time >= #{todayStart}")
+    Integer selectTodayActiveCountByCircleId(@Param("circleId") Long circleId,
+                                             @Param("todayStart") LocalDateTime todayStart);
 }
