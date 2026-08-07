@@ -143,6 +143,15 @@ const Heatmap: React.FC<HeatmapProps> = ({ data, compact, mode = 'minutes', show
         </View>
       )}
 
+      {/* 时间范围提示（r3 bugfix）：如 2025-08-08 ~ 2026-08-08 */}
+      {start && end && (
+        <View className='heatmap-range'>
+          <Text className='heatmap-range-text'>
+            {data.startDate} ~ {data.endDate}
+          </Text>
+        </View>
+      )}
+
       {!start || !end ? (
         <View className='heatmap-empty'>
           <Text className='heatmap-empty-text'>暂无热力图数据</Text>
@@ -152,6 +161,7 @@ const Heatmap: React.FC<HeatmapProps> = ({ data, compact, mode = 'minutes', show
           <ScrollView
             className='heatmap-scroll'
             scrollX
+            scrollIntoView='heatmap-last-col'
             enhanced
             showScrollbar={false}
           >
@@ -165,7 +175,11 @@ const Heatmap: React.FC<HeatmapProps> = ({ data, compact, mode = 'minutes', show
               </View>
               <View className='heatmap-grid'>
                 {weeks.map((column, weekIndex) => (
-                  <View key={weekIndex} className='heatmap-column'>
+                  <View
+                    key={weekIndex}
+                    className='heatmap-column'
+                    id={weekIndex === weeks.length - 1 ? 'heatmap-last-col' : undefined}
+                  >
                     {column.map((cellDate, dayIndex) => {
                       if (!cellDate) {
                         return <View key={dayIndex} className='heatmap-cell placeholder' />

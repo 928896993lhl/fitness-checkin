@@ -23,6 +23,16 @@
     }
   }
 
+  /* 时间范围提示（r3 bugfix） */
+  .heatmap-range {
+    margin: 8rpx 0 16rpx;
+
+    .heatmap-range-text {
+      font-size: 22rpx;
+      color: #999;
+    }
+  }
+
   .heatmap-empty {
     display: flex;
     align-items: center;
