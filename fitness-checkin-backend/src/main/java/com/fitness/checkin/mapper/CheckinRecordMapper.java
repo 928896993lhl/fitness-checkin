@@ -228,4 +228,31 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
             "WHERE circle_id = #{circleId} AND checkin_time >= #{todayStart}")
     Integer selectTodayActiveCountByCircleId(@Param("circleId") Long circleId,
                                              @Param("todayStart") LocalDateTime todayStart);
+
+    /**
+     * 圈子×成员批量聚合（一次 SQL 取回所有成员在该圈子的总时长/次数/天数）
+     *
+     * @param circleId 圈子ID
+     * @return 聚合列表 [{userId, totalDuration, totalCheckins, checkinDays}, ...]
+     */
+    @Select("SELECT user_id AS userId, " +
+            "COALESCE(SUM(duration), 0) AS totalDuration, " +
+            "COUNT(*) AS totalCheckins, " +
+            "COUNT(DISTINCT DATE_FORMAT(checkin_time, '%Y-%m-%d')) AS checkinDays " +
+            "FROM checkin_records WHERE circle_id = #{circleId} " +
+            "GROUP BY user_id")
+    List<Map<String, Object>> selectCircleMemberAggByCircleId(@Param("circleId") Long circleId);
+
+    /**
+     * 圈子×成员×计划 打卡天数（用于计算进行中计划完成率与已完成计划数）
+     *
+     * @param circleId 圈子ID
+     * @return 计划打卡天数列表 [{userId, planId, checkinDays}, ...]
+     */
+    @Select("SELECT user_id AS userId, plan_id AS planId, " +
+            "COUNT(DISTINCT DATE_FORMAT(checkin_time, '%Y-%m-%d')) AS checkinDays " +
+            "FROM checkin_records " +
+            "WHERE circle_id = #{circleId} AND plan_id IS NOT NULL " +
+            "GROUP BY user_id, plan_id")
+    List<Map<String, Object>> selectCircleMemberPlanDaysByCircleId(@Param("circleId") Long circleId);
 }

@@ -1,0 +1,95 @@
+classDiagram
+    class CircleController {
+        +Result getCircleMembers(Long circleId, UserDetails userDetails)
+    }
+    class CircleService {
+        <<interface>>
+        +List~Map~String,Object~~ getCircleMembers(Long circleId)
+        +boolean isCircleMember(Long circleId, Long userId)
+    }
+    class CircleServiceImpl {
+        -CircleMemberMapper circleMemberMapper
+        -CheckinRecordMapper checkinRecordMapper
+        -PlanMapper planMapper
+        -UserService userService
+        +List~Map~String,Object~~ getCircleMembers(Long circleId)
+        -Map~String,Object~~ buildMemberStats(Long userId, Map aggMap, Map planDays, List~Plan~ plans, Plan activePlan)
+    }
+    class CheckinRecordMapper {
+        +List~Map~String,Object~~ selectCircleMemberAggByCircleId(Long circleId)
+        +List~Map~String,Object~~ selectCircleMemberPlanDaysByCircleId(Long circleId)
+    }
+    class PlanMapper {
+        +List~Plan~ selectByCircleId(Long circleId)
+    }
+    class CircleMemberMapper {
+        +List~CircleMember~ selectByCircleId(Long circleId)
+    }
+    class CircleMember {
+        +Long id
+        +Long circleId
+        +Long userId
+        +Integer role
+        +LocalDateTime joinedAt
+    }
+    class Plan {
+        +Long planId
+        +Long circleId
+        +LocalDate startDate
+        +LocalDate endDate
+        +Integer status
+    }
+
+    CircleController --> CircleService : 调用
+    CircleService <|.. CircleServiceImpl : 实现
+    CircleServiceImpl --> CircleMemberMapper : 查询成员
+    CircleServiceImpl --> CheckinRecordMapper : 批量聚合
+    CircleServiceImpl --> PlanMapper : 计划列表
+    CircleServiceImpl --> UserService : 用户信息(批量)
+
+    class CircleMemberTS {
+        +ID id
+        +ID circleId
+        +ID userId
+        +UserRole role
+        +Timestamp joinedAt
+        +string nickname
+        +string avatarUrl
+        +User user
+        +MemberProgressStats stats
+    }
+    class MemberProgressStats {
+        +number totalDuration
+        +number checkinDays
+        +number totalCheckins
+        +ID currentPlanId
+        +string currentPlanName
+        +number currentPlanProgress
+        +number completedPlans
+    }
+    class MemberFields {
+        <<utils>>
+        +getMemberNickname(member) string
+        +getMemberAvatarUrl(member) string
+    }
+    class MemberAvatarList {
+        +CircleMember[] members
+        +int maxDisplay
+        +int size
+        +getInitial(member) string
+    }
+    class MemberProgressRow {
+        +MemberProgressStats stats
+        +formatDuration(minutes) string
+    }
+    class CircleDetail {
+        +CircleMember[] members
+        +loadData() void
+    }
+
+    CircleMemberTS --> MemberProgressStats : 包含
+    CircleMemberTS --> User : 兼容嵌套
+    CircleDetail --> MemberAvatarList : 渲染头像列表
+    CircleDetail --> MemberProgressRow : 渲染成员进展
+    CircleDetail --> MemberFields : 读取昵称/头像
+    MemberAvatarList --> MemberFields : 读取昵称/头像

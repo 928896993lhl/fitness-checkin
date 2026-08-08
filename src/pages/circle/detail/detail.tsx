@@ -7,7 +7,9 @@ import { CheckinService } from '../../../services/CheckinService'
 import { PlanService } from '../../../services/PlanService'
 import { Circle, Plan, CircleMember, CircleStats, HeatmapData } from '../../../types'
 import { isCircleActive } from '../../../types/constants'
+import { getMemberNickname, getMemberAvatarUrl } from '../../../utils'
 import MemberAvatarList from '../../../components/circle/MemberAvatarList'
+import MemberProgressRow from '../../../components/circle/MemberProgressRow'
 import PlanProgressCard from '../../../components/plan/PlanProgressCard'
 import LooseCheckinPanel from '../../../components/checkin/LooseCheckinPanel'
 import Heatmap from '../../../components/heatmap/Heatmap'
@@ -502,19 +504,20 @@ const CircleDetail = () => {
           {members.map(member => (
             <View key={member.id || member.userId} className='member-item'>
               <View className='member-avatar'>
-                {member.user?.avatarUrl ? (
-                  <Image src={member.user.avatarUrl} mode='aspectFill' />
+                {getMemberAvatarUrl(member) ? (
+                  <Image src={getMemberAvatarUrl(member)} mode='aspectFill' />
                 ) : (
                   <View className='avatar-placeholder'>
-                    <Text>{member.user?.nickname?.charAt(0) || '?'}</Text>
+                    <Text>{getMemberNickname(member).charAt(0) || '?'}</Text>
                   </View>
                 )}
               </View>
               <View className='member-info'>
-                <Text className='member-name'>{member.user?.nickname || '未知用户'}</Text>
+                <Text className='member-name'>{getMemberNickname(member)}</Text>
                 <Text className='member-role'>
                   {member.role === 2 ? '创建者' : member.role === 1 ? '管理员' : '成员'}
                 </Text>
+                <MemberProgressRow stats={member.stats} />
               </View>
               {member.role === 2 && (
                 <View className='creator-badge'>

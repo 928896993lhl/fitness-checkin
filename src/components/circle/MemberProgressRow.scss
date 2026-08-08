@@ -1,0 +1,26 @@
+/* 成员运动进展行（r4） */
+.member-progress {
+  margin-top: 8rpx;
+
+  .member-progress-text {
+    font-size: 22rpx;
+    color: #999;
+    line-height: 1.4;
+  }
+
+  /* 迷你进度条（有进行中计划时渲染） */
+  .member-progress-bar {
+    margin-top: 8rpx;
+    height: 6rpx;
+    border-radius: 3rpx;
+    background-color: #e5e7eb;
+    overflow: hidden;
+
+    .member-progress-bar-inner {
+      height: 100%;
+      border-radius: 3rpx;
+      background-color: #3b82f6;
+      transition: width 0.3s ease;
+    }
+  }
+}

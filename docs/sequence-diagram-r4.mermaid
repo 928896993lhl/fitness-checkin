@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    participant UI as CircleDetail.tsx
+    participant SVC as CircleService.ts
+    participant C as CircleController
+    participant S as CircleServiceImpl
+    participant M as CheckinRecordMapper/PlanMapper
+    participant DB as MySQL
+
+    UI->>SVC: getCircleMembers(circleId)
+    SVC->>C: GET /circles/{id}/members (携带 JWT)
+    C->>S: getCircleMembers(circleId)  // 前置 isCircleMember 校验
+    S->>M: circleMemberMapper.selectByCircleId(circleId)
+    DB-->>S: List<CircleMember>
+    S->>M: selectCircleMemberAggByCircleId(circleId)
+    DB-->>S: [{userId,totalDuration,totalCheckins,checkinDays}]
+    S->>M: selectCircleMemberPlanDaysByCircleId(circleId)
+    DB-->>S: [{userId,planId,checkinDays}]
+    S->>M: planMapper.selectByCircleId(circleId)
+    DB-->>S: List<Plan>
+    loop 每个成员
+        S->>S: buildMemberStats() 组装 stats
+    end
+    S-->>C: List<Map>（扁平字段 + stats）
+    C-->>SVC: Result.success(members)
+    SVC-->>UI: CircleMember[]
+    UI->>UI: 头像/昵称用 MemberFields 读取（扁平优先）
+    UI->>UI: 每行渲染 MemberProgressRow（总时长·完成计划/进度条）

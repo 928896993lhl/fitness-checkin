@@ -46,9 +46,12 @@ public interface CircleService {
 
     /**
      * 获取圈子成员列表
-     * 
+     * r4 起每个成员元素附带 stats 键（圈子维度运动进展统计：totalDuration/totalCheckins/checkinDays/
+     * currentPlanId/currentPlanName/currentPlanProgress/completedPlans/totalFinishedPlans），
+     * 其余扁平字段（id/circleId/userId/joinedAt/role/nickname/avatarUrl）保持不变，向后兼容。
+     *
      * @param circleId 圈子ID
-     * @return 成员列表（包含用户信息）
+     * @return 成员列表（包含用户信息与运动进展统计）
      */
     List<Map<String, Object>> getCircleMembers(Long circleId);
 

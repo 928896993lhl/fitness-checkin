@@ -1,5 +1,6 @@
 import { View, Text, Image } from '@tarojs/components'
 import { CircleMember } from '../../types'
+import { getMemberNickname, getMemberAvatarUrl } from '../../utils'
 import './MemberAvatarList.scss'
 
 interface MemberAvatarListProps {
@@ -26,10 +27,10 @@ const MemberAvatarList: React.FC<MemberAvatarListProps> = ({
   const remainingCount = members.length - maxDisplay
 
   /**
-   * 获取用户头像首字母
+   * 获取用户头像首字母（扁平优先，缺失时显示 '?'）
    */
   const getInitial = (member: CircleMember): string => {
-    return member.user?.nickname?.charAt(0) || '?'
+    return getMemberNickname(member).charAt(0) || '?'
   }
 
   return (
@@ -46,10 +47,10 @@ const MemberAvatarList: React.FC<MemberAvatarListProps> = ({
               zIndex: maxDisplay - index
             }}
           >
-            {member.user?.avatarUrl ? (
+            {getMemberAvatarUrl(member) ? (
               <Image
                 className='avatar-image'
-                src={member.user.avatarUrl}
+                src={getMemberAvatarUrl(member)}
                 mode='aspectFill'
                 style={{ width: '100%', height: '100%' }}
               />

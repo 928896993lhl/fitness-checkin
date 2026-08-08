@@ -92,8 +92,24 @@ export interface CircleMember {
   role: UserRole
   joinedAt: Timestamp
   // 联合查询字段（非数据库字段）
+  nickname?: string // 扁平昵称（GET /circles/{id}/members 返回，扁平优先）
+  avatarUrl?: string // 扁平头像URL（GET /circles/{id}/members 返回，扁平优先）
   user?: User
   circle?: Circle
+  // r4：成员运动进展统计（圈子维度，GET /circles/{id}/members 的 stats 键）
+  stats?: MemberProgressStats
+}
+
+/** 成员运动进展统计（圈子维度，对齐 GET /circles/{id}/members 的 stats 键） */
+export interface MemberProgressStats {
+  totalDuration: number // 该圈打卡总时长（分钟），无记录为 0
+  totalCheckins: number // 该圈打卡次数，无记录为 0
+  checkinDays: number // 该圈打卡天数，无记录为 0
+  currentPlanId?: ID | null // 当前进行中计划ID（无进行中计划为 null）
+  currentPlanName?: string | null // 当前进行中计划名称（无进行中计划为 null）
+  currentPlanProgress: number // 当前进行中计划完成率（0-100，四舍五入保留1位小数，clamp 0~100；无进行中计划为 0）
+  completedPlans: number // 该圈已结束计划中该成员有打卡记录的去重计划数
+  totalFinishedPlans?: number // 圈子已结束计划总数（用于展示"已完成 X/X 计划"分母）
 }
 
 /** 周期计划 */

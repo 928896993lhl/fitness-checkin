@@ -40,6 +40,13 @@ export class CircleService {
     return request(`/circles/${circleId}`)
   }
 
+  /**
+   * 获取圈子成员列表
+   * r4 契约：元素为扁平字段 {id, circleId, userId, joinedAt, role, nickname, avatarUrl}，
+   * 并附带 stats 键（MemberProgressStats：totalDuration/checkinDays/totalCheckins/currentPlanId/
+   * currentPlanName/currentPlanProgress/completedPlans/totalFinishedPlans）。
+   * 权限：仅圈子成员可查，非成员返回 403。
+   */
   static async getCircleMembers(circleId: string): Promise<APIResponse<CircleMember[]>> {
     return request(`/circles/${circleId}/members`)
   }

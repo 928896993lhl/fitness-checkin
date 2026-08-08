@@ -451,6 +451,13 @@
           font-size: 22rpx;
           color: #666;
         }
+        
+        /* 成员运动进展行（r4）：次级文本 22rpx #999，行高与组件内一致 */
+        .member-progress {
+          margin-top: 6rpx;
+          font-size: 22rpx;
+          color: #999;
+        }
       }
       
       .creator-badge {

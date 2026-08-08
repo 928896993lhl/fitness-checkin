@@ -2,6 +2,7 @@ export * from './dateUtils'
 export * from './imageUtils'
 export * from './validationUtils'
 export * from './storageUtils'
+export * from './memberFields'
 
 /**
  * 通用工具函数
