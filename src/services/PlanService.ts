@@ -5,8 +5,7 @@ import {
   CreatePlanRequest,
   UpdatePlanRequest,
   GetPlansRequest,
-  APIResponse,
-  PaginatedResult
+  APIResponse
 } from '../types'
 
 /**
@@ -26,7 +25,13 @@ export class PlanService {
     return request(`/plans/${planId}`, 'PUT', data)
   }
 
-  static async getPlansByCircle(circleId: string, params: GetPlansRequest = {}): Promise<APIResponse<PaginatedResult<Plan>>> {
+  /**
+   * 获取圈子计划列表
+   * r5 契约：后端直接返回 Plan[]（非分页），每个元素含 stats 键
+   * （CirclePlanStats：userCount/recordCount/totalDuration/totalMemberDays/progressPercentage）。
+   * 权限：仅圈子成员可查，非成员返回 403。
+   */
+  static async getPlansByCircle(circleId: string, params: GetPlansRequest = {}): Promise<APIResponse<Plan[]>> {
     const query: Record<string, any> = {}
     if (params.status !== undefined) {
       query.status = params.status
@@ -40,6 +45,11 @@ export class PlanService {
     return request(`/plans/circle/${circleId}`, 'GET', query)
   }
 
+  /**
+   * 获取计划详情
+   * r5 契约：返回 Map（驼峰），含 circleStats 键
+   * （CirclePlanStats：userCount/recordCount/totalDuration/totalMemberDays/progressPercentage）。
+   */
   static async getPlanDetail(planId: string): Promise<APIResponse<Plan>> {
     return request(`/plans/${planId}`)
   }

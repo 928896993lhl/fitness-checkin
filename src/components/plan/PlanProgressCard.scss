@@ -72,6 +72,16 @@
           transition: width 0.3s ease;
         }
       }
+      
+      /* r5：人天副文本（全员打卡 X人天 · 计划 N天 · 参与 M人），stats 缺失时整行隐藏 */
+      .member-days-text {
+        margin-top: 12rpx;
+        
+        .member-days-text-content {
+          font-size: 22rpx;
+          color: #999;
+        }
+      }
     }
     
     .details-section {

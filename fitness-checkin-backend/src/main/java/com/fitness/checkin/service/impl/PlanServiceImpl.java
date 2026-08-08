@@ -192,6 +192,8 @@ public class PlanServiceImpl implements PlanService {
 
         // 获取计划统计信息
         Map<String, Object> stats = checkinRecordMapper.selectStatsByPlanId(planId);
+        // r5：圈子整体时长进度（circleTotalGoal 为 0 时退化 totalDurationGoal × userCount）
+        stats.put("progressPercentage", calcCircleProgress(plan, stats));
 
         // 获取用户个人统计
         Integer userTotalDuration = checkinRecordMapper.selectTotalDurationByPlanIdAndUserId(planId, userId);
@@ -262,8 +264,9 @@ public class PlanServiceImpl implements PlanService {
             planInfo.put("minDurationPerCheckin", plan.getMinDurationPerCheckin());
             planInfo.put("createdAt", plan.getCreatedAt());
 
-            // 获取计划统计
+            // 获取计划统计（r5：含 totalMemberDays 与圈子整体进度 progressPercentage）
             Map<String, Object> stats = checkinRecordMapper.selectStatsByPlanId(plan.getPlanId());
+            stats.put("progressPercentage", calcCircleProgress(plan, stats));
             planInfo.put("stats", stats);
 
             return planInfo;
@@ -300,5 +303,80 @@ public class PlanServiceImpl implements PlanService {
     public Plan getActivePlan(Long circleId) {
         List<Plan> activePlans = planMapper.selectActiveByCircleId(circleId);
         return activePlans.isEmpty() ? null : activePlans.get(0);
+    }
+
+    /**
+     * 圈子整体时长进度：全员累计时长 ÷ 圈子总目标 × 100
+     * circleTotalGoal > 0 用之；否则退化 totalDurationGoal × userCount（人均目标 × 参与打卡人数）；
+     * 分母 ≤ 0（无人打卡且未设置圈子目标）返回 0。
+     *
+     * @param plan  计划实体（读取 circleTotalGoal / totalDurationGoal）
+     * @param stats 计划打卡统计（selectStatsByPlanId 返回值，含 totalDuration / userCount）
+     * @return 进度百分比（0-100，四舍五入保留 1 位小数并 clamp）
+     */
+    private double calcCircleProgress(Plan plan, Map<String, Object> stats) {
+        double totalDuration = toDouble(stats.get("totalDuration"));
+        int userCount = toInt(stats.get("userCount"));
+        int circleTotalGoal = plan.getCircleTotalGoal() == null ? 0 : plan.getCircleTotalGoal();
+        int perUserGoal = plan.getTotalDurationGoal() == null ? 0 : plan.getTotalDurationGoal();
+        double denominator = circleTotalGoal > 0 ? circleTotalGoal : (double) perUserGoal * userCount;
+        if (denominator <= 0) {
+            return 0d;
+        }
+        return clamp(round1(totalDuration * 100.0 / denominator), 0d, 100d);
+    }
+
+    /**
+     * Object -> int（MySQL COUNT/SUM 可能返回 Long/BigDecimal/Integer）
+     *
+     * @param value 数值对象
+     * @return int 值，null 为 0
+     */
+    private int toInt(Object value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return Integer.parseInt(value.toString());
+    }
+
+    /**
+     * Object -> double（MySQL SUM 可能返回 BigDecimal）
+     *
+     * @param value 数值对象
+     * @return double 值，null 为 0
+     */
+    private double toDouble(Object value) {
+        if (value == null) {
+            return 0d;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return Double.parseDouble(value.toString());
+    }
+
+    /**
+     * 四舍五入保留 1 位小数
+     *
+     * @param value 原始值
+     * @return 保留 1 位小数的值
+     */
+    private double round1(double value) {
+        return Math.round(value * 10.0) / 10.0;
+    }
+
+    /**
+     * 数值 clamp 到 [min, max]
+     *
+     * @param value 原始值
+     * @param min   下限
+     * @param max   上限
+     * @return clamp 后的值
+     */
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

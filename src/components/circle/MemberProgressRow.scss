@@ -1,26 +1,62 @@
-/* 成员运动进展行（r4） */
+/* 成员运动进展行（r5：副信息行 + 右侧进度，位于 member-info 昵称行下方） */
 .member-progress {
   margin-top: 8rpx;
 
-  .member-progress-text {
-    font-size: 22rpx;
-    color: #999;
-    line-height: 1.4;
-  }
+  .member-sub-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
 
-  /* 迷你进度条（有进行中计划时渲染） */
-  .member-progress-bar {
-    margin-top: 8rpx;
-    height: 6rpx;
-    border-radius: 3rpx;
-    background-color: #e5e7eb;
-    overflow: hidden;
+    /* 行2 副信息：已运动 X天 · 总时长 X / 暂无运动记录 */
+    .member-sub-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 22rpx;
+      color: #999;
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-    .member-progress-bar-inner {
-      height: 100%;
-      border-radius: 3rpx;
-      background-color: #3b82f6;
-      transition: width 0.3s ease;
+    /* 右侧：有进行中计划 → 当前计划 X% + 迷你进度条 */
+    .member-current-plan {
+      flex-shrink: 0;
+      margin-left: 16rpx;
+      text-align: right;
+
+      .member-right-text {
+        font-size: 22rpx;
+        color: #3b82f6;
+        line-height: 1.4;
+        font-weight: 500;
+      }
+
+      .member-progress-bar {
+        margin-top: 6rpx;
+        height: 6rpx;
+        width: 120rpx;
+        border-radius: 3rpx;
+        background-color: #e5e7eb;
+        overflow: hidden;
+
+        .member-progress-bar-inner {
+          height: 100%;
+          border-radius: 3rpx;
+          background-color: #3b82f6;
+          transition: width 0.3s ease;
+        }
+      }
+    }
+
+    /* 右侧：无进行中计划 → 已完成 X/X计划 */
+    .member-right-text {
+      flex-shrink: 0;
+      margin-left: 16rpx;
+      font-size: 22rpx;
+      color: #999;
+      line-height: 1.4;
     }
   }
 }

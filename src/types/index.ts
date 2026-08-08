@@ -112,6 +112,15 @@ export interface MemberProgressStats {
   totalFinishedPlans?: number // 圈子已结束计划总数（用于展示"已完成 X/X 计划"分母）
 }
 
+/** 计划圈子统计（对齐 GET /plans/circle/{id} 的 stats 键 / GET /plans/{planId} 的 circleStats 键，r5 新增） */
+export interface CirclePlanStats {
+  userCount: number // 该计划参与打卡的去重人数
+  recordCount: number // 该计划打卡次数
+  totalDuration: number // 该计划全员累计时长（分钟）
+  totalMemberDays: number // 全员打卡人天（同人同日去重）
+  progressPercentage: number // 圈子整体时长进度（0-100，clamp；circleTotalGoal 为 0 时退化人均目标×人数）
+}
+
 /** 周期计划 */
 export interface Plan {
   planId: ID
@@ -129,6 +138,10 @@ export interface Plan {
   updatedAt: Timestamp
   // 联合查询字段（非数据库字段）
   circle?: Circle
+  // r5：圈子统计（GET /plans/circle/{id} 的 stats 键，含 progressPercentage/totalMemberDays）
+  stats?: CirclePlanStats
+  // r5：圈子统计（GET /plans/{planId} 的 circleStats 键，计划详情页返回）
+  circleStats?: CirclePlanStats
 }
 
 /** 打卡记录（planId/circleId 均可空，宽松打卡不依赖计划） */
@@ -400,13 +413,6 @@ export interface ProgressBarProps {
   color?: string
   backgroundColor?: string
   showLabel?: boolean
-}
-
-/** 成员头像列表组件Props */
-export interface MemberAvatarListProps {
-  members: CircleMember[]
-  maxDisplay?: number
-  size?: number
 }
 
 // ==================== 工具类型 ====================

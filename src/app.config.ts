@@ -6,6 +6,7 @@ export default defineAppConfig({
     'pages/circle/detail/detail',
     'pages/circle/create/create',
     'pages/circle/join/join',
+    'pages/circle/history/history',
     'pages/plan/create/create',
     'pages/plan/detail/detail',
     'pages/checkin/checkin',

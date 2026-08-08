@@ -43,34 +43,12 @@
           font-weight: bold;
           color: #fff;
           margin-right: 20rpx;
-          /* r5：头部新增打卡按钮后，长名称允许收缩省略，避免撑破布局 */
+          /* r5：头部新增操作行后，长名称允许收缩省略，避免撑破布局 */
           flex-shrink: 1;
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-        }
-        
-        /* r5：今日打卡图标按钮（头部，仅活跃圈子显示） */
-        .header-checkin-btn {
-          flex-shrink: 0;
-          margin-left: auto;
-          display: flex;
-          align-items: center;
-          background: rgba(255, 255, 255, 0.2);
-          padding: 10rpx 20rpx;
-          border-radius: 30rpx;
-          
-          .header-checkin-icon {
-            font-size: 26rpx;
-            margin-right: 6rpx;
-          }
-          
-          .header-checkin-text {
-            font-size: 24rpx;
-            color: #fff;
-            font-weight: 500;
-          }
         }
         
         .status-tag {
@@ -99,6 +77,67 @@
           .status-text {
             font-size: 22rpx;
             color: #fff;
+          }
+        }
+      }
+      
+      /* r5：头部操作行（仅活跃圈子显示）：邀请好友（share 胶囊 flex:1）+ 打卡大按钮（flex:1.3） */
+      .header-actions {
+        display: flex;
+        gap: 20rpx;
+        margin-top: 20rpx;
+        margin-bottom: 16rpx;
+        
+        .header-action-btn {
+          flex: 1;
+          height: 88rpx;
+          border-radius: 44rpx;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          /* r5 bugfix：openType=share 用 Button 承载，重置 Button 原生默认样式 */
+          padding: 0;
+          margin: 0;
+          line-height: normal;
+          font-size: 28rpx;
+          background: none;
+
+          &::after {
+            border: none;
+          }
+          
+          /* 半透明白底、白字描边胶囊 */
+          &.share-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2rpx solid rgba(255, 255, 255, 0.7);
+            
+            .header-share-text {
+              font-size: 28rpx;
+              color: #fff;
+              font-weight: 500;
+            }
+          }
+        }
+        
+        /* 打卡大主按钮：📸 48rpx 图标 + 打卡 28rpx 文字，白底蓝字，高 88rpx，flex:1.3 突出 */
+        .header-checkin-btn {
+          flex: 1.3;
+          height: 88rpx;
+          border-radius: 44rpx;
+          background-color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          
+          .header-checkin-icon {
+            font-size: 48rpx;
+            margin-right: 10rpx;
+          }
+          
+          .header-checkin-text {
+            font-size: 28rpx;
+            color: #3b82f6;
+            font-weight: bold;
           }
         }
       }
@@ -143,50 +182,6 @@
   .archived-banner-text {
     font-size: 26rpx;
     color: #92400e;
-  }
-}
-
-.action-buttons {
-  display: flex;
-  gap: 20rpx;
-  padding: 0 30rpx;
-  /* r5：与头部拉开间距 */
-  margin-top: 28rpx;
-  margin-bottom: 30rpx;
-  
-  .action-btn {
-    flex: 1;
-    height: 88rpx;
-    border-radius: 44rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* r5 bugfix：openType=share 用 Button 承载，重置 Button 原生默认样式 */
-    padding: 0;
-    margin: 0;
-    line-height: normal;
-    font-size: 28rpx;
-    background: none;
-
-    &::after {
-      border: none;
-    }
-    
-    &.secondary-btn {
-      background-color: #fff;
-      border: 2rpx solid #3b82f6;
-      
-      .btn-icon {
-        font-size: 32rpx;
-        margin-right: 12rpx;
-      }
-      
-      .btn-text {
-        font-size: 28rpx;
-        color: #3b82f6;
-        font-weight: 500;
-      }
-    }
   }
 }
 
@@ -428,7 +423,6 @@
     .member-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       padding: 20rpx 0;
       border-bottom: 1rpx solid #f3f4f6;
       
@@ -468,7 +462,7 @@
         flex: 1;
         min-width: 0;
         
-        /* r5：名字 + 角色角标单行（头像旁） */
+        /* r5：名字 + 角色角标单行（头像旁），副信息行由 MemberProgressRow 渲染 */
         .member-name-row {
           display: flex;
           align-items: center;
@@ -510,20 +504,6 @@
               }
             }
           }
-        }
-      }
-      
-      /* r5：运动进展文本内联到行内右侧（右对齐紧凑） */
-      .member-progress {
-        flex-shrink: 0;
-        margin-left: 16rpx;
-        max-width: 320rpx;
-        text-align: right;
-        
-        .member-progress-text {
-          font-size: 22rpx;
-          color: #999;
-          line-height: 1.4;
         }
       }
     }

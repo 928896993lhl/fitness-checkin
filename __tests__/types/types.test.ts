@@ -3,6 +3,8 @@
  * 验证 src/types/index.ts 中的类型定义完整性
  *
  * BUG已修复: APIResponse 类型定义语法错误已修正（添加了 type 关键字）
+ * r5 同步: 字段断言与线上驼峰 JSON 对齐；新增 CirclePlanStats/Plan.stats/circleStats；
+ *          删除已移除的 MemberAvatarListProps（随 T03 删头像条组件）。
  */
 
 const fs = require('fs')
@@ -25,41 +27,41 @@ describe('类型定义文件结构检查', () => {
     expect(typesContent).toContain('export interface User')
     expect(typesContent).toContain('openid: string')
     expect(typesContent).toContain('nickname: string')
-    expect(typesContent).toContain('avatar_url: string')
+    expect(typesContent).toContain('avatarUrl: string')
   })
 
   test('定义了 Circle 接口', () => {
     expect(typesContent).toContain('export interface Circle')
     expect(typesContent).toContain('name: string')
-    expect(typesContent).toContain('creator_id: ID')
-    expect(typesContent).toContain('max_members: number')
-    expect(typesContent).toContain('invite_code: string')
+    expect(typesContent).toContain('creatorId: ID')
+    expect(typesContent).toContain('maxMembers: number')
+    expect(typesContent).toContain('inviteCode: string')
   })
 
   test('定义了 CircleMember 接口', () => {
     expect(typesContent).toContain('export interface CircleMember')
-    expect(typesContent).toContain('circle_id: ID')
-    expect(typesContent).toContain('user_id: ID')
+    expect(typesContent).toContain('circleId: ID')
+    expect(typesContent).toContain('userId: ID')
     expect(typesContent).toContain('role: UserRole')
   })
 
   test('定义了 Plan 接口', () => {
     expect(typesContent).toContain('export interface Plan')
-    expect(typesContent).toContain('circle_id: ID')
-    expect(typesContent).toContain('start_date: Timestamp')
-    expect(typesContent).toContain('end_date: Timestamp')
-    expect(typesContent).toContain('total_duration_goal: number')
-    expect(typesContent).toContain('daily_duration_goal: number')
-    expect(typesContent).toContain('min_duration_per_checkin: number')
+    expect(typesContent).toContain('circleId: ID')
+    expect(typesContent).toContain('startDate: Timestamp')
+    expect(typesContent).toContain('endDate: Timestamp')
+    expect(typesContent).toContain('totalDurationGoal: number')
+    expect(typesContent).toContain('dailyDurationGoal: number')
+    expect(typesContent).toContain('minDurationPerCheckin: number')
   })
 
   test('定义了 CheckinRecord 接口', () => {
     expect(typesContent).toContain('export interface CheckinRecord')
-    expect(typesContent).toContain('plan_id: ID')
+    expect(typesContent).toContain('planId?: ID | null')
     expect(typesContent).toContain('duration: number')
-    expect(typesContent).toContain('exercise_type: ExerciseType | string')
-    expect(typesContent).toContain('photo_url: string')
-    expect(typesContent).toContain('checkin_time: Timestamp')
+    expect(typesContent).toContain('exerciseType: ExerciseType | string')
+    expect(typesContent).toContain('photoUrl: string')
+    expect(typesContent).toContain('checkinTime: Timestamp')
   })
 
   test('DateRange 接口字段已修正（duration→end）', () => {
@@ -92,7 +94,7 @@ describe('类型定义文件结构检查', () => {
 
   test('定义了统计类型', () => {
     expect(typesContent).toContain('export interface UserExerciseStats')
-    expect(typesContent).toContain('export interface CircleExerciseStats')
+    expect(typesContent).toContain('export interface MemberProgressStats')
     expect(typesContent).toContain('export interface PlanProgress')
   })
 
@@ -100,7 +102,8 @@ describe('类型定义文件结构检查', () => {
     expect(typesContent).toContain('export interface CircleCardProps')
     expect(typesContent).toContain('export interface CheckinCardProps')
     expect(typesContent).toContain('export interface ProgressBarProps')
-    expect(typesContent).toContain('export interface MemberAvatarListProps')
+    // r5：MemberAvatarList 已删除，其 Props 不得再存在于类型定义中
+    expect(typesContent).not.toContain('export interface MemberAvatarListProps')
   })
 
   test('数据模型与PRD完全匹配', () => {
@@ -113,35 +116,47 @@ describe('类型定义文件结构检查', () => {
   })
 })
 
-describe('类型定义与PRD数据模型对比', () => {
-  test('用户表字段 - 与PRD一致', () => {
-    // PRD: user_id, openid, nickname, avatar_url, created_at
-    expect(typesContent).toContain('_id: ID') // user_id 对应 _id
-    expect(typesContent).toContain('openid: string')
-    expect(typesContent).toContain('nickname: string')
-    expect(typesContent).toContain('avatar_url: string')
-    expect(typesContent).toContain('created_at: Timestamp')
+describe('r5 新增类型契约', () => {
+  test('定义了 CirclePlanStats 接口', () => {
+    expect(typesContent).toContain('export interface CirclePlanStats')
+    expect(typesContent).toContain('userCount: number')
+    expect(typesContent).toContain('recordCount: number')
+    expect(typesContent).toContain('totalDuration: number')
+    expect(typesContent).toContain('totalMemberDays: number')
+    expect(typesContent).toContain('progressPercentage: number')
   })
 
-  test('圈子表字段 - 与PRD一致', () => {
-    // PRD: circle_id, name, creator_id, max_members, invite_code, created_at, status
-    expect(typesContent).toContain('creator_id: ID')
-    expect(typesContent).toContain('max_members: number')
-    expect(typesContent).toContain('invite_code: string')
+  test('Plan 接口包含 stats / circleStats（CirclePlanStats）', () => {
+    expect(typesContent).toContain('stats?: CirclePlanStats')
+    expect(typesContent).toContain('circleStats?: CirclePlanStats')
+  })
+})
+
+describe('类型定义与PRD数据模型对比', () => {
+  test('用户表字段 - 与PRD一致（线上驼峰）', () => {
+    expect(typesContent).toContain('userId: ID')
+    expect(typesContent).toContain('openid: string')
+    expect(typesContent).toContain('nickname: string')
+    expect(typesContent).toContain('avatarUrl: string')
+    expect(typesContent).toContain('createdAt?: Timestamp')
+  })
+
+  test('圈子表字段 - 与PRD一致（线上驼峰）', () => {
+    expect(typesContent).toContain('creatorId: ID')
+    expect(typesContent).toContain('maxMembers: number')
+    expect(typesContent).toContain('inviteCode: string')
     expect(typesContent).toContain('status: CircleStatus')
   })
 
-  test('计划表字段 - 与PRD一致', () => {
-    // PRD: plan_id, circle_id, name, start_date, end_date, total_duration_goal,
-    //      daily_duration_goal, circle_total_goal, min_duration_per_checkin, status
-    expect(typesContent).toContain('circle_total_goal: number')
-    expect(typesContent).toContain('min_duration_per_checkin: number')
+  test('计划表字段 - 与PRD一致（线上驼峰）', () => {
+    expect(typesContent).toContain('circleTotalGoal: number')
+    expect(typesContent).toContain('minDurationPerCheckin: number')
     expect(typesContent).toContain('status: PlanStatus')
   })
 
-  test('打卡记录表字段 - 与PRD一致', () => {
-    // PRD: record_id, plan_id, user_id, duration, exercise_type, photo_url, checkin_time, created_at
-    expect(typesContent).toContain('photo_file_id: string') // 扩展字段
-    expect(typesContent).toContain('note: string') // 扩展字段
+  test('打卡记录表字段 - 与PRD一致（线上驼峰）', () => {
+    expect(typesContent).toContain('photoUrl: string')
+    expect(typesContent).toContain('remark: string')
+    expect(typesContent).toContain('checkinTime: Timestamp')
   })
 })

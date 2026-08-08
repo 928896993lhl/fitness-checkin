@@ -72,14 +72,16 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
 
     /**
      * 查询计划的打卡统计
+     * r5：新增 totalMemberDays（全员打卡人天，同人同日去重），供圈子整体进度副文本展示
      * 
      * @param planId 计划ID
-     * @return 统计信息
+     * @return 统计信息 {userCount, recordCount, totalDuration, totalMemberDays}
      */
     @Select("SELECT " +
             "COUNT(DISTINCT user_id) as userCount, " +
             "COUNT(*) as recordCount, " +
-            "COALESCE(SUM(duration), 0) as totalDuration " +
+            "COALESCE(SUM(duration), 0) as totalDuration, " +
+            "COUNT(DISTINCT user_id, DATE_FORMAT(checkin_time, '%Y-%m-%d')) as totalMemberDays " +
             "FROM checkin_records WHERE plan_id = #{planId}")
     Map<String, Object> selectStatsByPlanId(Long planId);
 

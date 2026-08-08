@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    participant UI as CircleDetail.tsx
+    participant SVC as PlanService.ts
+    participant C as PlanController
+    participant S as PlanServiceImpl
+    participant M as CheckinRecordMapper
+    participant DB as MySQL
+
+    UI->>SVC: getPlansByCircle(circleId)
+    SVC->>C: GET /plans/circle/{id} (携带 JWT)
+    C->>S: getCirclePlans(circleId, userId)
+    Note over S: 前置 isCircleMember 校验
+    S->>M: selectStatsByPlanId(planId)  // 每个计划一次，含 totalMemberDays
+    DB-->>S: {userCount, recordCount, totalDuration, totalMemberDays}
+    S->>S: stats.put("progressPercentage", calcCircleProgress(plan, stats))
+    S-->>C: List~Map~（plan + stats 含 progressPercentage）
+    C-->>SVC: Result.success(plans)
+    SVC-->>UI: Plan[]（Plan.stats 已填充）
+
+    UI->>UI: pickCurrentPlan(plans) → currentPlan(status=1 优先)
+    UI->>UI: PlanProgressCard 读 plan.stats.progressPercentage 渲染主进度条 + 人天副文本
+    UI->>UI: 成员行集成 MemberProgressRow（已运动X天·总时长Y / 当前计划X%）

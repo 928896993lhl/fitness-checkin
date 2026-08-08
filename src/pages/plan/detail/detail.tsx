@@ -134,8 +134,8 @@ const PlanDetail = () => {
         </View>
       </View>
 
-      {/* 进度卡片 */}
-      {progress && (
+      {/* 进度卡片（r5：PlanProgressCard 兼容链读 plan.circleStats.progressPercentage；progress 仅用于详情区块） */}
+      {(progress || plan.circleStats) && (
         <View className='progress-section'>
           <Text className='section-title'>计划进度</Text>
           <PlanProgressCard

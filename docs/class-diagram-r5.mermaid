@@ -1,0 +1,94 @@
+classDiagram
+    class PlanController {
+        +Result getCirclePlans(Long circleId, UserDetails userDetails)
+        +Result getPlanDetail(Long planId, UserDetails userDetails)
+    }
+    class PlanServiceImpl {
+        -PlanMapper planMapper
+        -CheckinRecordMapper checkinRecordMapper
+        -CircleService circleService
+        +List~Map~String,Object~~ getCirclePlans(Long circleId, Long userId)
+        +Map~String,Object~~ getPlanDetail(Long planId, Long userId)
+        -double calcCircleProgress(Plan plan, Map stats)
+        -int toInt(Object value)
+        -double toDouble(Object value)
+        -double round1(double value)
+        -double clamp(double value, double min, double max)
+    }
+    class CheckinRecordMapper {
+        +Map~String,Object~~ selectStatsByPlanId(Long planId)
+    }
+    class Plan {
+        +Long planId
+        +Integer circleTotalGoal
+        +Integer totalDurationGoal
+        +LocalDate startDate
+        +LocalDate endDate
+        +Integer status
+    }
+    class PlanMapper {
+        +List~Plan~ selectByCircleId(Long circleId)
+    }
+    class CircleService {
+        <<interface>>
+        +boolean isCircleMember(Long circleId, Long userId)
+    }
+
+    PlanController --> PlanServiceImpl : 调用
+    PlanServiceImpl --> CheckinRecordMapper : 统计(含 totalMemberDays)
+    PlanServiceImpl --> PlanMapper : 计划列表
+    PlanServiceImpl --> CircleService : 权限校验
+
+    class PlanTS {
+        +ID planId
+        +number totalDurationGoal
+        +number circleTotalGoal
+        +CirclePlanStats stats
+        +CirclePlanStats circleStats
+    }
+    class CirclePlanStats {
+        +number userCount
+        +number recordCount
+        +number totalDuration
+        +number totalMemberDays
+        +number progressPercentage
+    }
+    class PlanProgressCard {
+        +Plan plan
+        +PlanProgress progress
+        +boolean showDetails
+        +getProgressPercentage() number
+        +formatMemberDaysText() string
+    }
+    class MemberProgressRow {
+        +MemberProgressStats stats
+        +formatDuration(minutes) string
+    }
+    class CircleDetail {
+        +CircleMember[] members
+        +Plan currentPlan
+        +loadData() void
+    }
+    class CircleHistory {
+        +ID circleId
+        +Plan[] plans
+        +string tab
+        +loadPlans() void
+    }
+    class MemberProgressStats {
+        +number totalDuration
+        +number checkinDays
+        +number totalCheckins
+        +ID currentPlanId
+        +string currentPlanName
+        +number currentPlanProgress
+        +number completedPlans
+        +number totalFinishedPlans
+    }
+
+    PlanTS --> CirclePlanStats : 包含 stats/circleStats
+    CircleDetail --> PlanProgressCard : 渲染当前计划
+    CircleDetail --> MemberProgressRow : 渲染成员副信息行
+    CircleDetail --> CircleHistory : 历史入口跳转
+    PlanProgressCard --> CirclePlanStats : 读取进度
+    MemberProgressRow --> MemberProgressStats : 读取成员统计

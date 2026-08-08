@@ -21,54 +21,51 @@ const formatDuration = (minutes: number): string => {
 }
 
 /**
- * 成员运动进展行组件（r4）
- * 展示单个成员在圈子内的运动统计，紧凑单行/双行，不破坏成员行布局：
- * - 无 stats 或无任何记录：显示"暂无运动记录"
- * - 无进行中计划：总时长 + 已完成计划（X/X 为 该成员完成数/圈子已结束计划总数）
- * - 有进行中计划：当前计划完成率 + 总时长 + 迷你进度条
+ * 成员运动进展行组件（r5 升级为两行布局中的"副信息行 + 右侧进度"）
+ * 渲染在 member-item 中部（flex:1）昵称行下方：
+ * - 行2 副信息（左）："已运动 X天 · 总时长 X"（无记录 → "暂无运动记录"）
+ * - 右侧（右对齐）：有进行中计划 → "当前计划 X%" + 迷你进度条；无 → "已完成 X/X计划"
  */
 const MemberProgressRow: React.FC<MemberProgressRowProps> = ({ stats }) => {
-  // 无 stats 或完全无记录：保持行高一致
-  if (!stats || (!Number(stats.totalCheckins) && !Number(stats.totalDuration) && !Number(stats.checkinDays))) {
-    return (
-      <View className='member-progress'>
-        <Text className='member-progress-text'>暂无运动记录</Text>
-      </View>
-    )
-  }
+  const totalCheckins = Number(stats?.totalCheckins) || 0
+  const totalDuration = Number(stats?.totalDuration) || 0
+  const checkinDays = Number(stats?.checkinDays) || 0
+  const hasAnyRecord = !!(totalCheckins || totalDuration || checkinDays)
 
-  const hasActivePlan = !!stats.currentPlanId && !!stats.currentPlanName
-  const durationText = formatDuration(Number(stats.totalDuration) || 0)
+  // 副信息行（行2）：已运动天数 + 总时长；无记录显示占位文本
+  const subText = hasAnyRecord
+    ? `已运动 ${checkinDays}天 · 总时长 ${formatDuration(totalDuration)}`
+    : '暂无运动记录'
 
-  // 有进行中计划：当前计划完成率 + 总时长 + 迷你进度条
-  if (hasActivePlan) {
-    const progress = Math.min(100, Math.max(0, Number(stats.currentPlanProgress) || 0))
-    return (
-      <View className='member-progress'>
-        <Text className='member-progress-text'>
-          当前计划 {Math.round(progress)}% · 总时长 {durationText}
-        </Text>
-        <View className='member-progress-bar'>
-          <View
-            className='member-progress-bar-inner'
-            style={{ width: `${progress}%` }}
-          />
-        </View>
-      </View>
-    )
-  }
-
-  // 无进行中计划：总时长 + 已完成计划（分母为圈子已结束计划总数，缺省退化为分子）
-  const completedPlans = Number(stats.completedPlans) || 0
-  const totalFinishedPlans = Number(stats.totalFinishedPlans) || 0
+  // 右侧进度：有进行中计划 → 当前计划 X% + 迷你进度条；无 → 已完成 X/X计划
+  const hasActivePlan = hasAnyRecord && !!stats?.currentPlanId && !!stats?.currentPlanName
+  const progress = hasActivePlan
+    ? Math.min(100, Math.max(0, Number(stats?.currentPlanProgress) || 0))
+    : 0
+  const completedPlans = Number(stats?.completedPlans) || 0
+  const totalFinishedPlans = Number(stats?.totalFinishedPlans) || 0
   const planText = totalFinishedPlans > 0
-    ? `已完成 ${completedPlans}/${totalFinishedPlans} 计划`
-    : `已完成 ${completedPlans} 计划`
+    ? `已完成 ${completedPlans}/${totalFinishedPlans}计划`
+    : `已完成 ${completedPlans}计划`
+
   return (
     <View className='member-progress'>
-      <Text className='member-progress-text'>
-        总时长 {durationText} · {planText}
-      </Text>
+      <View className='member-sub-row'>
+        <Text className='member-sub-text'>{subText}</Text>
+        {hasActivePlan ? (
+          <View className='member-current-plan'>
+            <Text className='member-right-text'>当前计划 {Math.round(progress)}%</Text>
+            <View className='member-progress-bar'>
+              <View
+                className='member-progress-bar-inner'
+                style={{ width: `${progress}%` }}
+              />
+            </View>
+          </View>
+        ) : hasAnyRecord ? (
+          <Text className='member-right-text'>{planText}</Text>
+        ) : null}
+      </View>
     </View>
   )
 }

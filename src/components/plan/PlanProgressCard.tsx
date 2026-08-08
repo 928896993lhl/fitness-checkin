@@ -1,5 +1,5 @@
 import { View, Text } from '@tarojs/components'
-import { Plan, PlanProgress } from '../../types'
+import { Plan, PlanProgress, CirclePlanStats } from '../../types'
 import './PlanProgressCard.scss'
 
 interface PlanProgressCardProps {
@@ -11,7 +11,8 @@ interface PlanProgressCardProps {
 
 /**
  * 计划进度卡片组件
- * 用于展示计划进度信息
+ * r5：进度读取走兼容链 plan.stats → plan.circleStats → progress → 0，
+ * 同时供圈子详情页（列表接口 stats）与计划详情页（详情接口 circleStats）复用。
  */
 const PlanProgressCard: React.FC<PlanProgressCardProps> = ({
   plan,
@@ -34,18 +35,56 @@ const PlanProgressCard: React.FC<PlanProgressCardProps> = ({
    * 格式化时长
    */
   const formatDuration = (minutes: number): string => {
-    if (minutes < 60) return `${minutes}分钟`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
+    const value = Number(minutes) || 0
+    if (value <= 0) return '0分钟'
+    if (value < 60) return `${value}分钟`
+    const hours = Math.floor(value / 60)
+    const mins = value % 60
     return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`
   }
 
   /**
-   * 计算进度百分比
+   * 读取圈子统计（兼容链：plan.stats → plan.circleStats）
+   */
+  const getCircleStats = (): CirclePlanStats | null | undefined => {
+    return plan.stats || plan.circleStats
+  }
+
+  /**
+   * 计算进度百分比（r5 兼容链）
+   * 圈子详情页（列表接口）读 plan.stats；计划详情页（详情接口）读 plan.circleStats；
+   * 旧调用方传 progress 时回退 PlanProgress；均缺失为 0。
    */
   const getProgressPercentage = (): number => {
+    const stats = getCircleStats()
+    if (stats && Number(stats.progressPercentage) >= 0) {
+      return Number(stats.progressPercentage) || 0
+    }
     if (progress) return progress.progressPercentage
     return 0
+  }
+
+  /**
+   * 计算计划总天数（endDate - startDate + 1，避免依赖后端字段）
+   */
+  const getTotalDays = (): number => {
+    if (!plan.startDate || !plan.endDate) return 0
+    const startMs = new Date(plan.startDate.includes('T') ? plan.startDate : plan.startDate.replace(' ', 'T')).getTime()
+    const endMs = new Date(plan.endDate.includes('T') ? plan.endDate : plan.endDate.replace(' ', 'T')).getTime()
+    if (isNaN(startMs) || isNaN(endMs) || endMs < startMs) return 0
+    return Math.round((endMs - startMs) / 86400000) + 1
+  }
+
+  /**
+   * 格式化副文本：全员打卡 X人天 · 计划 N天 · 参与 M人（stats 缺失时返回 null，隐藏整行）
+   */
+  const formatMemberDaysText = (): string | null => {
+    const stats = getCircleStats()
+    if (!stats) return null
+    const totalMemberDays = Number(stats.totalMemberDays) || 0
+    const userCount = Number(stats.userCount) || 0
+    const totalDays = getTotalDays()
+    return `全员打卡 ${totalMemberDays}人天 · 计划 ${totalDays}天 · 参与 ${userCount}人`
   }
 
   /**
@@ -73,7 +112,10 @@ const PlanProgressCard: React.FC<PlanProgressCardProps> = ({
   }
 
   const percentage = getProgressPercentage()
+  // 至多展示 1 位小数（如 76.2% / 76%）
+  const displayPercentage = Math.round(percentage * 10) / 10
   const statusColor = getStatusColor()
+  const memberDaysText = formatMemberDaysText()
 
   return (
     <View className='plan-progress-card' onClick={onTap}>
@@ -92,27 +134,33 @@ const PlanProgressCard: React.FC<PlanProgressCardProps> = ({
           </Text>
         </View>
       </View>
-      
+
       <View className='card-body'>
         {/* 进度条 */}
         <View className='progress-section'>
           <View className='progress-header'>
-            <Text className='progress-label'>完成进度</Text>
+            <Text className='progress-label'>圈子进度</Text>
             <Text className='progress-value' style={{ color: statusColor }}>
-              {percentage}%
+              {displayPercentage}%
             </Text>
           </View>
           <View className='progress-bar'>
             <View
               className='progress-fill'
               style={{
-                width: `${percentage}%`,
+                width: `${displayPercentage}%`,
                 backgroundColor: statusColor
               }}
             ></View>
           </View>
+          {/* 副文本：全员打卡人天/计划天数/参与人数（stats 缺失时整行隐藏） */}
+          {memberDaysText && (
+            <View className='member-days-text'>
+              <Text className='member-days-text-content'>{memberDaysText}</Text>
+            </View>
+          )}
         </View>
-        
+
         {/* 详情信息 */}
         {showDetails && progress && (
           <View className='details-section'>
@@ -137,7 +185,7 @@ const PlanProgressCard: React.FC<PlanProgressCardProps> = ({
           </View>
         )}
       </View>
-      
+
       {/* 每日目标 */}
       <View className='card-footer'>
         <View className='goal-item'>
