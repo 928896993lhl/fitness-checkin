@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import Taro, { useDidShow, usePullDownRefresh, stopPullDownRefresh, useRouter, useShareAppMessage } from '@tarojs/taro'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Button } from '@tarojs/components'
 import { useUserState } from '../../../context/UserContext'
 import { CircleService } from '../../../services/CircleService'
 import { CheckinService } from '../../../services/CheckinService'
 import { PlanService } from '../../../services/PlanService'
-import { Circle, Plan, CircleMember, CircleStats, HeatmapData } from '../../../types'
+import { Circle, Plan, CircleMember, CircleStats, HeatmapData, MemberProgressStats } from '../../../types'
 import { isCircleActive } from '../../../types/constants'
 import { getMemberNickname, getMemberAvatarUrl } from '../../../utils'
 import MemberAvatarList from '../../../components/circle/MemberAvatarList'
-import MemberProgressRow from '../../../components/circle/MemberProgressRow'
 import PlanProgressCard from '../../../components/plan/PlanProgressCard'
 import LooseCheckinPanel from '../../../components/checkin/LooseCheckinPanel'
 import Heatmap from '../../../components/heatmap/Heatmap'
@@ -223,16 +222,6 @@ const CircleDetail = () => {
   }
 
   /**
-   * 分享圈子
-   */
-  const shareCircle = () => {
-    Taro.showShareMenu({
-      withShareTicket: true,
-      menus: ['shareAppMessage', 'shareTimeline']
-    })
-  }
-
-  /**
    * 归档圈子（仅创建者，二次确认）
    */
   const handleArchive = () => {
@@ -302,6 +291,30 @@ const CircleDetail = () => {
     return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`
   }
 
+  /**
+   * 格式化成员运动进展文本（r5：单行紧凑展示，内联到成员行右侧）
+   * - 无 stats 或无任何记录：'暂无'
+   * - 有进行中计划：'当前计划 XX%'
+   * - 无进行中计划：'总时长 XX · X/X计划'（无已结束计划时退化为 '总时长 XX · 已完成 X计划'）
+   */
+  const formatMemberProgress = (stats?: MemberProgressStats | null): string => {
+    if (!stats || (!Number(stats.totalCheckins) && !Number(stats.totalDuration) && !Number(stats.checkinDays))) {
+      return '暂无'
+    }
+    const hasActivePlan = !!stats.currentPlanId && !!stats.currentPlanName
+    const durationText = formatDuration(Number(stats.totalDuration) || 0)
+    if (hasActivePlan) {
+      const progress = Math.min(100, Math.max(0, Number(stats.currentPlanProgress) || 0))
+      return `当前计划 ${Math.round(progress)}%`
+    }
+    const completedPlans = Number(stats.completedPlans) || 0
+    const totalFinishedPlans = Number(stats.totalFinishedPlans) || 0
+    if (totalFinishedPlans > 0) {
+      return `总时长 ${durationText} · ${completedPlans}/${totalFinishedPlans}计划`
+    }
+    return `总时长 ${durationText} · 已完成 ${completedPlans}计划`
+  }
+
   const circleActive = isCircleActive(circle?.status)
 
   // 加载状态
@@ -347,6 +360,12 @@ const CircleDetail = () => {
                 <View className={`status-dot ${circleActive ? 'active' : 'archived'}`}></View>
                 <Text className='status-text'>{circleActive ? '进行中' : '已归档'}</Text>
               </View>
+              {circleActive && (
+                <View className='header-checkin-btn' onClick={openCheckinPanel}>
+                  <Text className='header-checkin-icon'>📸</Text>
+                  <Text className='header-checkin-text'>打卡</Text>
+                </View>
+              )}
             </View>
             <Text className='circle-desc'>{circle.description || '暂无简介'}</Text>
           </View>
@@ -370,18 +389,12 @@ const CircleDetail = () => {
         </View>
       )}
 
-      {/* 操作按钮 */}
+      {/* 操作按钮：今日打卡已移至头部图标按钮；底部仅保留"邀请好友"（Button openType=share 真正触发分享） */}
       <View className='action-buttons'>
-        {circleActive && (
-          <View className='action-btn primary-btn' onClick={openCheckinPanel}>
-            <Text className='btn-icon'>📸</Text>
-            <Text className='btn-text'>今日打卡</Text>
-          </View>
-        )}
-        <View className='action-btn secondary-btn' onClick={shareCircle}>
+        <Button className='action-btn secondary-btn share-btn' openType='share'>
           <Text className='btn-icon'>📤</Text>
           <Text className='btn-text'>邀请好友</Text>
-        </View>
+        </Button>
       </View>
 
       {/* 运动统计（圈子维度） */}
@@ -513,17 +526,23 @@ const CircleDetail = () => {
                 )}
               </View>
               <View className='member-info'>
-                <Text className='member-name'>{getMemberNickname(member)}</Text>
-                <Text className='member-role'>
-                  {member.role === 2 ? '创建者' : member.role === 1 ? '管理员' : '成员'}
-                </Text>
-                <MemberProgressRow stats={member.stats} />
-              </View>
-              {member.role === 2 && (
-                <View className='creator-badge'>
-                  <Text className='badge-text'>👑</Text>
+                <View className='member-name-row'>
+                  <Text className='member-name'>{getMemberNickname(member)}</Text>
+                  {member.role === 2 && (
+                    <View className='member-role-badge creator'>
+                      <Text className='member-role-badge-text'>👑 创建者</Text>
+                    </View>
+                  )}
+                  {member.role === 1 && (
+                    <View className='member-role-badge admin'>
+                      <Text className='member-role-badge-text'>管理员</Text>
+                    </View>
+                  )}
                 </View>
-              )}
+              </View>
+              <View className='member-progress'>
+                <Text className='member-progress-text'>{formatMemberProgress(member.stats)}</Text>
+              </View>
             </View>
           ))}
         </View>

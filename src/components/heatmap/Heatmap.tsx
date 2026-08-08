@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { HeatmapData, HeatmapDay, HeatmapProps } from '../../types'
@@ -15,6 +16,19 @@ import './Heatmap.scss'
  */
 const Heatmap: React.FC<HeatmapProps> = ({ data, compact, mode = 'minutes', showMore, onMore }) => {
   const levels = mode === 'members' ? CIRCLE_HEATMAP_LEVELS : HEATMAP_LEVELS
+
+  /**
+   * 滚动定位目标（r5 bugfix）：
+   * 热力图 data 为异步加载，首次渲染 data 为空（无列可定位）；
+   * 数据到达后 scrollTarget 从 '' 变为 'heatmap-last-col'，属性值变化才会触发 ScrollView 重新滚动到最后一列。
+   */
+  const [scrollTarget, setScrollTarget] = useState('')
+
+  useEffect(() => {
+    if (data && data.startDate && data.endDate) {
+      setScrollTarget('heatmap-last-col')
+    }
+  }, [data?.startDate, data?.endDate])
 
   /**
    * 解析 YYYY-MM-DD 为本地 Date
@@ -161,7 +175,7 @@ const Heatmap: React.FC<HeatmapProps> = ({ data, compact, mode = 'minutes', show
           <ScrollView
             className='heatmap-scroll'
             scrollX
-            scrollIntoView='heatmap-last-col'
+            scrollIntoView={scrollTarget}
             enhanced
             showScrollbar={false}
           >
