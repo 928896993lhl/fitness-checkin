@@ -225,6 +225,16 @@ public class CircleServiceImpl implements CircleService {
                 .min(Comparator.comparing(Plan::getStartDate, Comparator.nullsLast(Comparator.naturalOrder())))
                 .orElse(null);
 
+        // 当前进行中计划时间范围内的圈内打卡天数（含宽松打卡，plan_id 可为 null）
+        // 仅当存在进行中计划时查询，避免无效 SQL；无进行中计划时为 null，进度按 0 处理
+        final Map<Long, Integer> daysInRange =
+                activePlan != null && activePlan.getStartDate() != null && activePlan.getEndDate() != null
+                        ? toDaysInRangeMap(checkinRecordMapper.selectCircleMemberDaysInRange(
+                                circleId,
+                                activePlan.getStartDate().atStartOfDay(),
+                                activePlan.getEndDate().plusDays(1).atStartOfDay()))
+                        : null;
+
         // 获取每个成员的用户信息，并附加圈子维度运动进展统计（向后兼容，仅新增 stats 键）
         return members.stream().map(member -> {
             Map<String, Object> memberInfo = new HashMap<>();
@@ -240,7 +250,7 @@ public class CircleServiceImpl implements CircleService {
             memberInfo.put("avatarUrl", user.getAvatarUrl());
 
             // r4：成员运动进展统计（圈子维度）
-            memberInfo.put("stats", buildMemberStats(member.getUserId(), aggMap, planDays, plans, activePlan));
+            memberInfo.put("stats", buildMemberStats(member.getUserId(), aggMap, planDays, daysInRange, plans, activePlan));
 
             return memberInfo;
         }).collect(Collectors.toList());
@@ -250,7 +260,8 @@ public class CircleServiceImpl implements CircleService {
      * 组装单个成员的运动进展统计（圈子维度）
      * 口径（全部限定在圈内：checkin_records.circle_id = 圈子ID AND user_id = 成员ID）：
      * - totalDuration / totalCheckins / checkinDays：来自圈子×成员聚合，无记录为 0
-     * - currentPlanProgress：该成员在"当前进行中计划"的打卡天数 / (endDate-startDate+1) × 100，
+     * - currentPlanProgress：该成员在"当前进行中计划时间范围"内的圈内打卡天数
+     *   （含宽松打卡，即不区分 plan_id）/(endDate-startDate+1) × 100，
      *   四舍五入保留 1 位小数并 clamp 0~100；无进行中计划为 0
      * - completedPlans：该圈 status=2 已结束计划中、该成员有打卡记录的去重计划数
      * - totalFinishedPlans：该圈 status=2 已结束计划总数（前端展示"已完成 X/X 计划"分母）
@@ -258,6 +269,8 @@ public class CircleServiceImpl implements CircleService {
      * @param userId      成员用户ID
      * @param aggMap      圈子×成员聚合：userId -> {totalDuration,totalCheckins,checkinDays}
      * @param planDays    圈子×成员×计划打卡天数：userId -> (planId -> checkinDays)
+     * @param daysInRange 圈子×成员在当前进行中计划时间范围内打卡天数：userId -> checkinDays，
+     *                    无进行中计划时为 null
      * @param plans       圈子计划列表（含 status/startDate/endDate）
      * @param activePlan  当前进行中计划（status=1 且 startDate 最早），可能为 null
      * @return stats Map
@@ -265,6 +278,7 @@ public class CircleServiceImpl implements CircleService {
     private Map<String, Object> buildMemberStats(Long userId,
                                                  Map<Long, Map<String, Object>> aggMap,
                                                  Map<Long, Map<Long, Integer>> planDays,
+                                                 Map<Long, Integer> daysInRange,
                                                  List<Plan> plans,
                                                  Plan activePlan) {
         Map<String, Object> stats = new HashMap<>();
@@ -278,13 +292,13 @@ public class CircleServiceImpl implements CircleService {
         stats.put("totalCheckins", totalCheckins);
         stats.put("checkinDays", checkinDays);
 
-        // 当前进行中计划完成率（口径与 getUserCheckinStats 完全一致：打卡天数 / 计划总天数 × 100）
+        // 当前进行中计划完成率：计划时间范围内该圈打卡天数（含宽松打卡）/ 计划总天数 × 100
+        // 口径与 getUserCheckinStats 一致：打卡天数 / 计划总天数 × 100
         if (activePlan != null && activePlan.getStartDate() != null && activePlan.getEndDate() != null) {
             stats.put("currentPlanId", activePlan.getPlanId());
             stats.put("currentPlanName", activePlan.getName());
             long totalDays = ChronoUnit.DAYS.between(activePlan.getStartDate(), activePlan.getEndDate()) + 1;
-            int days = planDays.getOrDefault(userId, Collections.emptyMap())
-                    .getOrDefault(activePlan.getPlanId(), 0);
+            int days = daysInRange == null ? 0 : daysInRange.getOrDefault(userId, 0);
             double progress = totalDays > 0 ? round1(days * 100.0 / totalDays) : 0d;
             stats.put("currentPlanProgress", clamp(progress, 0d, 100d));
         } else {
@@ -356,6 +370,28 @@ public class CircleServiceImpl implements CircleService {
             planDays.computeIfAbsent(userId, k -> new HashMap<>()).put(planId, toInt(row.get("checkinDays")));
         }
         return planDays;
+    }
+
+    /**
+     * 圈子×成员时间范围内打卡天数行 -> Map<userId, checkinDays>
+     *
+     * @param daysInRangeRows 时间范围打卡天数行列表
+     * @return userId -> 打卡天数
+     */
+    private Map<Long, Integer> toDaysInRangeMap(List<Map<String, Object>> daysInRangeRows) {
+        Map<Long, Integer> daysInRange = new HashMap<>();
+        if (daysInRangeRows == null) {
+            return daysInRange;
+        }
+        for (Map<String, Object> row : daysInRangeRows) {
+            Object userIdObj = row.get("userId");
+            if (userIdObj == null) {
+                continue;
+            }
+            Long userId = Long.valueOf(userIdObj.toString());
+            daysInRange.put(userId, toInt(row.get("checkinDays")));
+        }
+        return daysInRange;
     }
 
     /**

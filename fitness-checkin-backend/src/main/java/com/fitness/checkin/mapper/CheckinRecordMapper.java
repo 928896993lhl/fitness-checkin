@@ -244,7 +244,7 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
     List<Map<String, Object>> selectCircleMemberAggByCircleId(@Param("circleId") Long circleId);
 
     /**
-     * 圈子×成员×计划 打卡天数（用于计算进行中计划完成率与已完成计划数）
+     * 圈子×成员×计划 打卡天数（用于计算已完成计划数）
      *
      * @param circleId 圈子ID
      * @return 计划打卡天数列表 [{userId, planId, checkinDays}, ...]
@@ -255,4 +255,22 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
             "WHERE circle_id = #{circleId} AND plan_id IS NOT NULL " +
             "GROUP BY user_id, plan_id")
     List<Map<String, Object>> selectCircleMemberPlanDaysByCircleId(@Param("circleId") Long circleId);
+
+    /**
+     * 查询圈子内各成员在指定时间范围内的去重打卡天数（不区分是否绑定计划）
+     * 宽松打卡（plan_id 为 null）同样计入，用于"当前进行中计划"进度统计
+     *
+     * @param circleId 圈子ID
+     * @param start    时间范围起始（含）
+     * @param end      时间范围结束（不含）
+     * @return 打卡天数列表 [{userId, checkinDays}, ...]
+     */
+    @Select("SELECT user_id AS userId, " +
+            "COUNT(DISTINCT DATE_FORMAT(checkin_time, '%Y-%m-%d')) AS checkinDays " +
+            "FROM checkin_records " +
+            "WHERE circle_id = #{circleId} AND checkin_time >= #{start} AND checkin_time < #{end} " +
+            "GROUP BY user_id")
+    List<Map<String, Object>> selectCircleMemberDaysInRange(@Param("circleId") Long circleId,
+                                                            @Param("start") LocalDateTime start,
+                                                            @Param("end") LocalDateTime end);
 }
