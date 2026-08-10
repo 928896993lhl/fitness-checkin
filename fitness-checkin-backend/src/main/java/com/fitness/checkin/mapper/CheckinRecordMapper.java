@@ -275,4 +275,25 @@ public interface CheckinRecordMapper extends BaseMapper<CheckinRecord> {
     List<Map<String, Object>> selectCircleMemberDaysInRange(@Param("circleId") Long circleId,
                                                             @Param("start") LocalDateTime start,
                                                             @Param("end") LocalDateTime end);
+
+    /**
+     * 查询圈子在指定时间范围内的打卡统计（圈子维度，不区分是否绑定计划）
+     * 宽松打卡（plan_id 为 null）同样计入，用于圈子计划进度 progressPercentage 与
+     * 成员进展 currentPlanProgress（selectCircleMemberDaysInRange 时间范围口径）保持一致。
+     *
+     * @param circleId 圈子ID
+     * @param start    时间范围起始（含）
+     * @param end      时间范围结束（不含）
+     * @return 统计信息 {userCount, recordCount, totalDuration, totalMemberDays}
+     */
+    @Select("SELECT " +
+            "COUNT(DISTINCT user_id) as userCount, " +
+            "COUNT(*) as recordCount, " +
+            "COALESCE(SUM(duration), 0) as totalDuration, " +
+            "COUNT(DISTINCT user_id, DATE_FORMAT(checkin_time, '%Y-%m-%d')) as totalMemberDays " +
+            "FROM checkin_records " +
+            "WHERE circle_id = #{circleId} AND checkin_time >= #{start} AND checkin_time < #{end}")
+    Map<String, Object> selectCirclePlanStats(@Param("circleId") Long circleId,
+                                              @Param("start") LocalDateTime start,
+                                              @Param("end") LocalDateTime end);
 }

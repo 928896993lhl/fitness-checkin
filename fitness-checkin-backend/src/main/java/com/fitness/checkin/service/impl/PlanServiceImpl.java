@@ -190,8 +190,8 @@ public class PlanServiceImpl implements PlanService {
             throw BusinessException.forbidden("没有权限查看此计划");
         }
 
-        // 获取计划统计信息
-        Map<String, Object> stats = checkinRecordMapper.selectStatsByPlanId(planId);
+        // 获取计划统计信息（r6：时间范围口径，含宽松打卡，与成员进展一致）
+        Map<String, Object> stats = getCirclePlanStats(plan);
         // r5：圈子整体时长进度（circleTotalGoal 为 0 时退化 totalDurationGoal × userCount）
         stats.put("progressPercentage", calcCircleProgress(plan, stats));
 
@@ -264,8 +264,9 @@ public class PlanServiceImpl implements PlanService {
             planInfo.put("minDurationPerCheckin", plan.getMinDurationPerCheckin());
             planInfo.put("createdAt", plan.getCreatedAt());
 
-            // 获取计划统计（r5：含 totalMemberDays 与圈子整体进度 progressPercentage）
-            Map<String, Object> stats = checkinRecordMapper.selectStatsByPlanId(plan.getPlanId());
+            // 获取计划统计（r5：含 totalMemberDays 与圈子整体进度 progressPercentage；
+            // r6：时间范围口径，含宽松打卡，与成员进展一致）
+            Map<String, Object> stats = getCirclePlanStats(plan);
             stats.put("progressPercentage", calcCircleProgress(plan, stats));
             planInfo.put("stats", stats);
 
@@ -306,12 +307,32 @@ public class PlanServiceImpl implements PlanService {
     }
 
     /**
+     * 获取圈子计划进度统计（r6 新口径）：
+     * 计划设置了 startDate/endDate 时，按圈子 + 计划时间范围统计该圈全部打卡
+     * （含宽松打卡 plan_id 为 null），与成员进展 currentPlanProgress 口径一致；
+     * 计划时间范围缺失时降级为原按计划关联统计（selectStatsByPlanId）。
+     *
+     * @param plan 计划实体（读取 circleId / startDate / endDate / planId）
+     * @return 统计信息 {userCount, recordCount, totalDuration, totalMemberDays}
+     */
+    private Map<String, Object> getCirclePlanStats(Plan plan) {
+        if (plan.getStartDate() != null && plan.getEndDate() != null) {
+            return checkinRecordMapper.selectCirclePlanStats(
+                    plan.getCircleId(),
+                    plan.getStartDate().atStartOfDay(),
+                    plan.getEndDate().plusDays(1).atStartOfDay());
+        }
+        // 防御：时间范围缺失时降级为按计划关联统计
+        return checkinRecordMapper.selectStatsByPlanId(plan.getPlanId());
+    }
+
+    /**
      * 圈子整体时长进度：全员累计时长 ÷ 圈子总目标 × 100
      * circleTotalGoal > 0 用之；否则退化 totalDurationGoal × userCount（人均目标 × 参与打卡人数）；
      * 分母 ≤ 0（无人打卡且未设置圈子目标）返回 0。
      *
      * @param plan  计划实体（读取 circleTotalGoal / totalDurationGoal）
-     * @param stats 计划打卡统计（selectStatsByPlanId 返回值，含 totalDuration / userCount）
+     * @param stats 计划打卡统计（getCirclePlanStats 返回值，含 totalDuration / userCount）
      * @return 进度百分比（0-100，四舍五入保留 1 位小数并 clamp）
      */
     private double calcCircleProgress(Plan plan, Map<String, Object> stats) {
