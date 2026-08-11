@@ -242,7 +242,7 @@ components/checkin/LooseCheckinPanel.tsx          # 改造：打卡成功后徽�
 - **热力图**：`GET /checkin/heatmap/mine?days=365` → `{startDate,endDate,days:[{date,minutes,count}]}`；前端 `HEATMAP_LEVELS` 0灰/1-29浅绿/30-59中绿/≥60深绿。
 - **徽章 code 8 个**：`first_checkin / days_7 / days_30 / days_100 / minutes_1000 / streak_7 / streak_30 / distance_50`。
 - **避免 Spring 循环依赖**：CircleServiceImpl 不注入 PlanService（初始计划走 PlanMapper 直插）；CheckinServiceImpl 不注入 BadgeService（徽章判定由 CheckinController 编排 BadgeService，BadgeService 单向依赖 CheckinService）。
-- **基建**：前端 baseURL `http://124.222.95.76/api`；编译 `npx taro build --type weapp`（可能卡住，后台运行/重试）；后端 `mvn clean package -DskipTests` + `systemctl restart fitness-checkin`；MySQL `fitness_user/Fitness@2026`。
+- **基建**：前端 baseURL `http://124.222.95.76/api`；编译 `npx taro build --type weapp`（可能卡住，后台运行/重试）；后端 `mvn clean package -DskipTests` + `systemctl restart fitness-checkin`；MySQL `fitness_user/********`。
 - **勿回退**：`code===200`、`/checkin` 单数、统计字段驼峰、tabbar 图标 `src/assets/tabbar/`、邀请码 8 位校验。
 
 ### 9. Task Dependency Graph

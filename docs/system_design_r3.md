@@ -352,7 +352,7 @@ export const PAGE_PATHS = { /* ...既有 */ PROFILE_BADGES: '/pages/profile/badg
 - **POST /checkin 响应**：data 为 CheckinRecord + 瞬态 `newlyUnlockedBadges:[{code,name,icon}]`，形状不变，勿包裹。
 - **避免循环依赖**：徽章判定继续由 `CheckinController` 编排 `BadgeService`（CheckinService 不注入 BadgeService）；圈子统计/热力图放 `CheckinServiceImpl`（单向依赖 CircleService），禁止反向。
 - **生产 SQL（P1 可选）**：`ALTER TABLE checkin_records ADD INDEX idx_checkin_records_circle_time (circle_id, checkin_time);`（圈子聚合加速；低峰执行，先备份）。
-- **基建**：前端 baseURL `http://124.222.95.76/api`；编译 `npx taro build --type weapp`（可能卡住，后台运行/重试）；后端 `mvn clean package -DskipTests` + `systemctl restart fitness-checkin`；MySQL `fitness_user/Fitness@2026`。
+- **基建**：前端 baseURL `http://124.222.95.76/api`；编译 `npx taro build --type weapp`（可能卡住，后台运行/重试）；后端 `mvn clean package -DskipTests` + `systemctl restart fitness-checkin`；MySQL `fitness_user/********`。
 - **勿回退**：`code===200`、`/checkin` 单数、统计字段驼峰、tabbar 图标 `src/assets/tabbar/`、邀请码 8 位校验、上传 name='file'。
 
 ### 9. Task Dependency Graph

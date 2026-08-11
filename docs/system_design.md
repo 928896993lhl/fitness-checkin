@@ -211,7 +211,7 @@ ALTER TABLE checkin_records MODIFY COLUMN plan_id BIGINT NULL COMMENT '计划ID�
 - **API 响应**：统一 `{code, data, message}`，成功 `code===200`。
 - **分页**：`GET /checkin/records/mine?page=&size=` 返回 `{records,total,page,size}`，`total` 用数据库总数。
 - **时间**：后端 `yyyy-MM-dd HH:mm:ss`（Asia/Shanghai），前端 `new Date(str.replace(' ','T'))` 兼容解析。
-- **基建**：前端 baseURL `http://124.222.95.76/api`；编译 `npx taro build --type weapp`（后台运行）；后端 `mvn clean package -DskipTests` + `systemctl restart fitness-checkin`；MySQL `fitness_user/Fitness@2026`。
+- **基建**：前端 baseURL `http://124.222.95.76/api`；编译 `npx taro build --type weapp`（后台运行）；后端 `mvn clean package -DskipTests` + `systemctl restart fitness-checkin`；MySQL `fitness_user/********`。
 - **勿回退**：`code===200` 判断、`/checkin` 单数路径、统计字段驼峰、tabbar 图标 `src/assets/tabbar/`、邀请码 8 位校验。
 
 ### 9. Task Dependency Graph
