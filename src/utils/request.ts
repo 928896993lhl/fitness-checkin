@@ -1,10 +1,11 @@
 import Taro from '@tarojs/taro'
 import { APIResponse } from '../types'
+import { API_BASE_URL } from '../types/constants'
 
 /**
- * API基础地址
+ * API基础地址（统一从 constants 引入，便于后续切换 HTTPS 仅改一处）
  */
-const BASE_URL = 'http://124.222.95.76/api'
+const BASE_URL = API_BASE_URL
 
 /**
  * 请求拦截器

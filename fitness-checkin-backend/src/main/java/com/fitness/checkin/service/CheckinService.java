@@ -83,7 +83,7 @@ public interface CheckinService {
      * @param size   每页大小
      * @return 分页打卡记录（Page 实现 List，total 用 getTotal()）
      */
-    Page<CheckinRecord> getPlanCheckinRecords(Long planId, int page, int size);
+    Page<CheckinRecord> getPlanCheckinRecords(Long planId, Long userId, int page, int size);
 
     /**
      * 获取计划的打卡统计
@@ -91,7 +91,7 @@ public interface CheckinService {
      * @param planId 计划ID
      * @return 统计信息
      */
-    Map<String, Object> getPlanCheckinStats(Long planId);
+    Map<String, Object> getPlanCheckinStats(Long planId, Long userId);
 
     /**
      * 获取计划的每日打卡统计
@@ -101,7 +101,7 @@ public interface CheckinService {
      * @param endDate   结束日期
      * @return 每日统计列表
      */
-    List<Map<String, Object>> getPlanDailyStats(Long planId, LocalDate startDate, LocalDate endDate);
+    List<Map<String, Object>> getPlanDailyStats(Long planId, Long userId, LocalDate startDate, LocalDate endDate);
 
     /**
      * 检查用户今日是否已打卡

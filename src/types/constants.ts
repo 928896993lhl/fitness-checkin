@@ -4,8 +4,12 @@
  */
 export { isCircleActive, isCreatorRole } from './index'
 
-/** API基础地址 */
-export const API_BASE_URL = 'https://keepall.cloud/api'
+/**
+ * API基础地址（生产工作端点）
+ * 当前生产服务器仅提供 HTTP（keepall.cloud 的 HTTPS 尚未配置），故此处为 http://
+ * TODO 生产需切到 HTTPS：keepall.cloud 配置 TLS 并加入微信合法域名后改为 https://keepall.cloud/api
+ */
+export const API_BASE_URL = 'http://124.222.95.76/api'
 
 /** 数据库集合名称 */
 export const DB_COLLECTIONS = {

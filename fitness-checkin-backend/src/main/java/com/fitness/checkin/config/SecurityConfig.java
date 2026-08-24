@@ -70,8 +70,10 @@ public class SecurityConfig {
                 // 公开接口 - 不需要认证
                 .requestMatchers(
                     "/auth/**",
-                    "/files/**",
                     "/health",
+                    // 隐私政策 / 用户协议静态页（合规页，须对未登录用户公开）
+                    "/privacy.html",
+                    "/agreement.html",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/webjars/**",

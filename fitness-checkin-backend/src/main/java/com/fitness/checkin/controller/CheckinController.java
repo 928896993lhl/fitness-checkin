@@ -242,7 +242,7 @@ public class CheckinController {
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
             User user = getCurrentUser(userDetails);
-            Page<CheckinRecord> records = checkinService.getPlanCheckinRecords(planId, page, size);
+            Page<CheckinRecord> records = checkinService.getPlanCheckinRecords(planId, user.getUserId(), page, size);
             return Result.success(buildPageResult(records.getRecords(), records.getTotal(), page, size));
         } catch (Exception e) {
             logger.warn("查询计划打卡记录失败，返回空列表: {}", e.getMessage());
@@ -259,7 +259,7 @@ public class CheckinController {
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
             User user = getCurrentUser(userDetails);
-            Map<String, Object> stats = checkinService.getPlanCheckinStats(planId);
+            Map<String, Object> stats = checkinService.getPlanCheckinStats(planId, user.getUserId());
             return Result.success(stats);
         } catch (Exception e) {
             logger.warn("查询计划统计失败，返回空统计: {}", e.getMessage());
@@ -282,7 +282,7 @@ public class CheckinController {
             }
             Map<String, Object> stats = new HashMap<>();
             stats.put("date", date.toString());
-            stats.put("records", checkinService.getPlanDailyStats(planId, date, date));
+            stats.put("records", checkinService.getPlanDailyStats(planId, user.getUserId(), date, date));
             return Result.success(stats);
         } catch (Exception e) {
             logger.warn("查询每日统计失败，返回空统计: {}", e.getMessage());

@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text, Button } from '@tarojs/components'
 import { useUserDispatch } from '../../context/UserContext'
 import { UserService } from '../../services/UserService'
+import { API_BASE_URL } from '../../types/constants'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import './login.scss'
 
@@ -111,7 +112,7 @@ const Login = () => {
    */
   const viewUserAgreement = () => {
     Taro.navigateTo({
-      url: '/pages/webview/webview?url=https://example.com/agreement'
+      url: `/pages/webview/webview?url=${API_BASE_URL}/agreement.html`
     })
   }
 
@@ -120,7 +121,7 @@ const Login = () => {
    */
   const viewPrivacyPolicy = () => {
     Taro.navigateTo({
-      url: '/pages/webview/webview?url=https://example.com/privacy'
+      url: `/pages/webview/webview?url=${API_BASE_URL}/privacy.html`
     })
   }
 

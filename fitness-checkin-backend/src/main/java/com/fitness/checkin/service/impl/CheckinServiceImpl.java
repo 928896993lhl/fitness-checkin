@@ -315,7 +315,13 @@ public class CheckinServiceImpl implements CheckinService {
     }
 
     @Override
-    public Page<CheckinRecord> getPlanCheckinRecords(Long planId, int page, int size) {
+    public Page<CheckinRecord> getPlanCheckinRecords(Long planId, Long userId, int page, int size) {
+        // 权限：仅圈子成员可查，非成员 403（Controller 不得降级掩盖）
+        Plan plan = planService.getPlanById(planId);
+        if (!circleService.isCircleMember(plan.getCircleId(), userId)) {
+            throw BusinessException.forbidden("没有权限查看该计划数据");
+        }
+
         // 分页查询
         Page<CheckinRecord> pageParam = new Page<>(page, size);
         QueryWrapper<CheckinRecord> queryWrapper = new QueryWrapper<>();
@@ -326,13 +332,25 @@ public class CheckinServiceImpl implements CheckinService {
     }
 
     @Override
-    public Map<String, Object> getPlanCheckinStats(Long planId) {
+    public Map<String, Object> getPlanCheckinStats(Long planId, Long userId) {
+        // 权限：仅圈子成员可查，非成员 403（Controller 不得降级掩盖）
+        Plan plan = planService.getPlanById(planId);
+        if (!circleService.isCircleMember(plan.getCircleId(), userId)) {
+            throw BusinessException.forbidden("没有权限查看该计划数据");
+        }
+
         // 获取计划统计
         return checkinRecordMapper.selectStatsByPlanId(planId);
     }
 
     @Override
-    public List<Map<String, Object>> getPlanDailyStats(Long planId, LocalDate startDate, LocalDate endDate) {
+    public List<Map<String, Object>> getPlanDailyStats(Long planId, Long userId, LocalDate startDate, LocalDate endDate) {
+        // 权限：仅圈子成员可查，非成员 403（Controller 不得降级掩盖）
+        Plan plan = planService.getPlanById(planId);
+        if (!circleService.isCircleMember(plan.getCircleId(), userId)) {
+            throw BusinessException.forbidden("没有权限查看该计划数据");
+        }
+
         // 转换为LocalDateTime
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);

@@ -110,8 +110,14 @@ public class FileServiceImpl implements FileService {
         try {
             // 从URL中提取相对路径
             String relativePath = fileUrl.replace(urlPrefix, "");
-            Path filePath = Paths.get(uploadPath, relativePath);
-            
+            // 规范化路径并校验落在上传目录内，防止路径穿越任意文件删除
+            Path base = Paths.get(uploadPath).toAbsolutePath().normalize();
+            Path target = base.resolve(relativePath).normalize();
+            if (!target.startsWith(base)) {
+                throw BusinessException.badRequest("非法的文件路径");
+            }
+            Path filePath = target;
+
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
                 logger.info("文件删除成功: {}", fileUrl);
@@ -126,20 +132,28 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public boolean fileExists(String fileUrl) {
-        try {
-            String relativePath = fileUrl.replace(urlPrefix, "");
-            Path filePath = Paths.get(uploadPath, relativePath);
-            return Files.exists(filePath);
-        } catch (Exception e) {
-            return false;
+        String relativePath = fileUrl.replace(urlPrefix, "");
+        // 规范化路径并校验落在上传目录内，防止路径穿越探测文件存在性
+        Path base = Paths.get(uploadPath).toAbsolutePath().normalize();
+        Path target = base.resolve(relativePath).normalize();
+        if (!target.startsWith(base)) {
+            throw BusinessException.badRequest("非法的文件路径");
         }
+        Path filePath = target;
+        return Files.exists(filePath);
     }
 
     @Override
     public long getFileSize(String fileUrl) {
         try {
             String relativePath = fileUrl.replace(urlPrefix, "");
-            Path filePath = Paths.get(uploadPath, relativePath);
+            // 规范化路径并校验落在上传目录内，防止路径穿越
+            Path base = Paths.get(uploadPath).toAbsolutePath().normalize();
+            Path target = base.resolve(relativePath).normalize();
+            if (!target.startsWith(base)) {
+                throw BusinessException.badRequest("非法的文件路径");
+            }
+            Path filePath = target;
             if (Files.exists(filePath)) {
                 return Files.size(filePath);
             }

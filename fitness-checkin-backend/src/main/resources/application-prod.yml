@@ -3,7 +3,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/fitness_checkin?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:fitness_user}
-    password: ${DB_PASSWORD:your_password}
+    password: ${DB_PASSWORD}
     hikari:
       minimum-idle: 10
       maximum-pool-size: 50
@@ -36,8 +36,12 @@ logging:
 
 # 微信小程序配置（生产环境从环境变量读取）
 wechat:
-  appid: ${WECHAT_APPID:your-production-appid}
-  secret: ${WECHAT_SECRET:your-production-secret}
+  appid: ${WECHAT_APPID}
+  secret: ${WECHAT_SECRET}
+
+# JWT 配置（生产环境必须注入 JWT_SECRET，缺失即启动失败，不回退默认密钥）
+jwt:
+  secret: ${JWT_SECRET}
 
 # 文件上传路径（生产环境）
 fitness:
