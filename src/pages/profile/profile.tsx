@@ -70,6 +70,15 @@ const Profile = () => {
   }
 
   /**
+   * 返回首页
+   */
+  const navigateToHome = () => {
+    Taro.switchTab({
+      url: '/pages/index/index'
+    })
+  }
+
+  /**
    * 跳转到历史记录
    */
   const navigateToHistory = () => {
@@ -229,6 +238,9 @@ const Profile = () => {
           <View className='login-btn' onClick={navigateToLogin}>
             <Text className='login-btn-text'>立即登录</Text>
           </View>
+          <View className='back-home-btn' onClick={navigateToHome}>
+            <Text className='back-home-text'>返回首页</Text>
+          </View>
         </View>
       </View>
     )
@@ -297,6 +309,11 @@ const Profile = () => {
 
       {/* 功能菜单 */}
       <View className='menu-section'>
+        <View className='menu-item' onClick={navigateToHome}>
+          <Text className='menu-icon'>🏠</Text>
+          <Text className='menu-text'>返回首页</Text>
+          <Text className='menu-arrow'>›</Text>
+        </View>
         <View className='menu-item' onClick={navigateToHistory}>
           <Text className='menu-icon'>📋</Text>
           <Text className='menu-text'>运动历史</Text>
