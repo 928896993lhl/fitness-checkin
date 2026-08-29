@@ -45,6 +45,24 @@
       font-weight: 500;
     }
   }
+
+  .back-home-btn {
+    margin-top: 24rpx;
+    width: 80%;
+    height: 88rpx;
+    background-color: #fff;
+    border-radius: 44rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2rpx solid #3b82f6;
+    
+    .back-home-text {
+      font-size: 32rpx;
+      color: #3b82f6;
+      font-weight: 500;
+    }
+  }
 }
 
 .user-card {
