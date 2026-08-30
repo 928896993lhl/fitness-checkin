@@ -21,7 +21,8 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 300rpx;
+    bottom: 0;
+    height: auto;
     background: linear-gradient(135deg, #3b82f6, #2563eb);
   }
   
@@ -151,6 +152,9 @@
     .circle-meta {
       display: flex;
       gap: 30rpx;
+      margin-top: 30rpx;
+      position: relative;
+      z-index: 1;
       
       .meta-item {
         display: flex;
