@@ -253,18 +253,6 @@ export async function imageToBase64(filePath: string): Promise<string> {
 }
 
 /**
- * 判断文件是否为图片
- * @param filePath 文件路径
- * @returns 是否为图片
- */
-export function isImageFile(filePath: string): boolean {
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-  const lowerPath = filePath.toLowerCase()
-  
-  return imageExtensions.some(ext => lowerPath.endsWith(ext))
-}
-
-/**
  * 获取图片的MIME类型
  * @param filePath 文件路径
  * @returns MIME类型
